@@ -3,7 +3,6 @@ package io.leego.mypages.util;
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.List;
 import java.util.Queue;
 import java.util.Set;
@@ -74,6 +73,8 @@ public class Page<T> implements Serializable {
             } else if (collection instanceof PaginationQueue) {
                 return of((PaginationQueue<T>) collection);
             }
+        } else if (collection instanceof List) {
+            return new Page<>((List<T>) collection);
         }
         return new Page<>(toList(collection));
     }
@@ -113,13 +114,13 @@ public class Page<T> implements Serializable {
 
     private static <T> List<T> toList(Collection<T> collection) {
         if (collection == null) {
-            return Collections.emptyList();
+            return new ArrayList<>();
         }
         return new ArrayList<>(collection);
     }
 
     public static <T> Page<T> empty() {
-        return new Page<>(Collections.emptyList(), 0, 0, 0L, 0L, false, false);
+        return new Page<>(new ArrayList<>(), 0, 0, 0L, 0L, false, false);
     }
 
     public static <T> Builder<T> builder() {
