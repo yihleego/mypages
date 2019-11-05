@@ -24,6 +24,8 @@ public @interface Pagination {
 
     int maxSize() default -1;
 
+    boolean reasonable() default false;
+
     String countColumn() default "";
 
 }

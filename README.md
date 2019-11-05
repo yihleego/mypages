@@ -1,19 +1,21 @@
 # MyPages
 
 The MyPages is a java based, open source pagination plugin for MyBatis that simplifies database paging queries.
+Many databases, one plugin.
 
 ## Dependency
 
 ```bash
 # git clone https://github.com/yihleego/mypages.git
 # cd mypages
+# mvn clean install
 ```
 
 ### Maven
 
 ```xml
 <properties>
-    <mypages.version>0.0.1</mypages.version>
+    <mypages.version>0.0.2</mypages.version>
 </properties>
 
 <dependency>
@@ -26,57 +28,29 @@ The MyPages is a java based, open source pagination plugin for MyBatis that simp
 ### Gradle
 
 ```xml
-implementation 'io.leego:mypages:0.0.1'
+implementation 'io.leego:mypages:0.0.2'
 ```
 
-## Usage
+## Supported
 
-### Spring Xml
-```xml
-<bean id="sqlSessionFactoryBean" class="org.mybatis.spring.SqlSessionFactoryBean">
-    <property name="dataSource" ref="dataSource"/>
-    <property name="mapperLocations">
-        <list>
-            <value>classpath:mapper/*.xml</value>
-        </list>
-    </property>
-    <property name="plugins">
-        <bean class="io.leego.mypages.interceptor.PaginationInterceptor">
-            <property name="sqlDialect" value="MYSQL"/>
-            <property name="pageFieldName" value="page"/>
-            <property name="sizeFieldName" value="size"/>
-        </bean>
-    </property>
-</bean>
-```
-
-### Spring Boot 
-
-```java
-@Bean
-public SqlSessionFactory sqlSessionFactory(DataSource dataSource) throws Exception {
-    // Plugins
-    Interceptor[] plugins = new Interceptor[1];
-    plugins[0] = interceptor();
-    // SqlSessionFactoryBean
-    SqlSessionFactoryBean sqlSessionFactoryBean = new SqlSessionFactoryBean();
-    sqlSessionFactoryBean.setDataSource(dataSource);
-    sqlSessionFactoryBean.setPlugins(plugins);
-    return sqlSessionFactoryBean.getObject();
-}
-
-@Bean
-public PaginationInterceptor interceptor() {
-    return new PaginationInterceptor()
-            .sqlDialect(SqlDialect.POSTGRESQL)
-            .pagingFields("page", "size");
-}
-```
-
+|Database|Supported|Database|Supported|
+|:-:|:-:|:-:|:-:|
+|MySQL|✔|PostgreSQL|✔|
+|Oracle|✔|MariaDB|✔|
+|SQLite|✔|DB2|✔|
+|H2|✔|Phoenix|✔|
+|Apache Derby|✔|HyperSQL|✔|
+|Informix|✔|TiDB|✔|
+|SQL Server|❌|Sybase|❌|
+|Exasol|❌|ClickHouse|❌|
+|Cassandra|❌|Vertica|❌|
+|Greenplum|❌|Apache Hive|❌|
+|Snowflake|❌|Azure|❌|
+|Amazon Redshift|❌|
 
 ## Documentation
 
-> * Soon...
+> * [User Guide](https://github.com/yihleego/mypages/blob/master/USERGUIDE.md)
 
 ## Contact
 

@@ -10,6 +10,7 @@ public class PaginationField {
     private int defaultSize;
     private int maxPage;
     private int maxSize;
+    private boolean reasonable;
     private String countColumn;
     private Field pageField;
     private Field sizeField;
@@ -17,11 +18,12 @@ public class PaginationField {
     private Field rowsField;
     private Field countColumnField;
 
-    public PaginationField(int defaultPage, int defaultSize, int maxPage, int maxSize, String countColumn, Field pageField, Field sizeField, Field offsetField, Field rowsField, Field countColumnField) {
+    public PaginationField(int defaultPage, int defaultSize, int maxPage, int maxSize, boolean reasonable, String countColumn, Field pageField, Field sizeField, Field offsetField, Field rowsField, Field countColumnField) {
         this.defaultPage = defaultPage;
         this.defaultSize = defaultSize;
         this.maxPage = maxPage;
         this.maxSize = maxSize;
+        this.reasonable = reasonable;
         this.countColumn = countColumn;
         this.pageField = pageField;
         this.sizeField = sizeField;
@@ -60,6 +62,14 @@ public class PaginationField {
 
     public void setMaxSize(int maxSize) {
         this.maxSize = maxSize;
+    }
+
+    public boolean isReasonable() {
+        return reasonable;
+    }
+
+    public void setReasonable(boolean reasonable) {
+        this.reasonable = reasonable;
     }
 
     public String getCountColumn() {

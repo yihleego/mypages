@@ -2,7 +2,6 @@ package io.leego.mypages.dialect;
 
 import io.leego.mypages.util.MetaObjectUtils;
 import io.leego.mypages.util.PaginationParam;
-import io.leego.mypages.util.StringUtils;
 import org.apache.ibatis.cache.CacheKey;
 import org.apache.ibatis.mapping.BoundSql;
 import org.apache.ibatis.mapping.MappedStatement;
@@ -28,7 +27,7 @@ public abstract class AbstractDialect implements Dialect {
 
     @Override
     public String getCountSql(String sql, String column) {
-        if (StringUtils.isEmpty(column)) {
+        if (column == null || column.isEmpty()) {
             column = ASTERISK;
         }
         return "SELECT COUNT(" + column + ") FROM (" + sql + ") _TCT";

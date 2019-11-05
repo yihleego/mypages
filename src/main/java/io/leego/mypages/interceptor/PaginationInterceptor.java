@@ -16,7 +16,6 @@ import io.leego.mypages.util.PaginationField;
 import io.leego.mypages.util.PaginationParam;
 import io.leego.mypages.util.ReflectUtils;
 import io.leego.mypages.util.Search;
-import io.leego.mypages.util.StringUtils;
 import org.apache.ibatis.cache.CacheKey;
 import org.apache.ibatis.executor.Executor;
 import org.apache.ibatis.mapping.BoundSql;
@@ -72,34 +71,6 @@ public class PaginationInterceptor implements Interceptor {
     private Dialect dialect;
     private ConcurrentMap<String, MappedStatement> countMsMap = new ConcurrentHashMap<>(64);
     private ConcurrentMap<String, PaginationField> paginationFieldMap = new ConcurrentHashMap<>();
-
-    private static MappedStatement newCountMappedStatement(MappedStatement ms, String msId) {
-        MappedStatement.Builder builder = new MappedStatement.Builder(ms.getConfiguration(), msId, ms.getSqlSource(), ms.getSqlCommandType());
-        builder.resource(ms.getResource());
-        builder.fetchSize(ms.getFetchSize());
-        builder.statementType(ms.getStatementType());
-        builder.keyGenerator(ms.getKeyGenerator());
-        if (ms.getKeyProperties() != null && ms.getKeyProperties().length != 0) {
-            StringBuilder keyProperties = new StringBuilder();
-            for (String keyProperty : ms.getKeyProperties()) {
-                keyProperties.append(keyProperty).append(",");
-            }
-            keyProperties.delete(keyProperties.length() - 1, keyProperties.length());
-            builder.keyProperty(keyProperties.toString());
-        }
-        builder.timeout(ms.getTimeout());
-        builder.parameterMap(ms.getParameterMap());
-        builder.resultSetType(ms.getResultSetType());
-        builder.cache(ms.getCache());
-        builder.flushCacheRequired(ms.isFlushCacheRequired());
-        builder.useCache(ms.isUseCache());
-
-        List<ResultMap> resultMaps = new ArrayList<>();
-        ResultMap resultMap = new ResultMap.Builder(ms.getConfiguration(), ms.getId(), Long.class, Collections.emptyList()).build();
-        resultMaps.add(resultMap);
-        builder.resultMaps(resultMaps);
-        return builder.build();
-    }
 
     @Override
     public Object intercept(Invocation invocation) throws Throwable {
@@ -169,6 +140,34 @@ public class PaginationInterceptor implements Interceptor {
         return executor.query(ms, parameter, RowBounds.DEFAULT, resultHandler, cacheKey, paginationBoundSql);
     }
 
+    private MappedStatement newCountMappedStatement(MappedStatement ms, String msId) {
+        MappedStatement.Builder builder = new MappedStatement.Builder(ms.getConfiguration(), msId, ms.getSqlSource(), ms.getSqlCommandType());
+        builder.resource(ms.getResource());
+        builder.fetchSize(ms.getFetchSize());
+        builder.statementType(ms.getStatementType());
+        builder.keyGenerator(ms.getKeyGenerator());
+        if (ms.getKeyProperties() != null && ms.getKeyProperties().length != 0) {
+            StringBuilder keyProperties = new StringBuilder();
+            for (String keyProperty : ms.getKeyProperties()) {
+                keyProperties.append(keyProperty).append(",");
+            }
+            keyProperties.delete(keyProperties.length() - 1, keyProperties.length());
+            builder.keyProperty(keyProperties.toString());
+        }
+        builder.timeout(ms.getTimeout());
+        builder.parameterMap(ms.getParameterMap());
+        builder.resultSetType(ms.getResultSetType());
+        builder.cache(ms.getCache());
+        builder.flushCacheRequired(ms.isFlushCacheRequired());
+        builder.useCache(ms.isUseCache());
+
+        List<ResultMap> resultMaps = new ArrayList<>();
+        ResultMap resultMap = new ResultMap.Builder(ms.getConfiguration(), ms.getId(), Long.class, Collections.emptyList()).build();
+        resultMaps.add(resultMap);
+        builder.resultMaps(resultMaps);
+        return builder.build();
+    }
+
     private BoundSql newBoundSql(MappedStatement ms, BoundSql boundSql, String sql) {
         BoundSql newBoundSql = new BoundSql(ms.getConfiguration(), sql, boundSql.getParameterMappings(), boundSql.getParameterObject());
         for (ParameterMapping mapping : boundSql.getParameterMappings()) {
@@ -208,11 +207,13 @@ public class PaginationInterceptor implements Interceptor {
     }
 
     private PaginationParam analyseParameter(Object parameter) {
-        PaginationField paginationField = paginationFieldMap.computeIfAbsent(parameter.getClass().getName(), className -> buildPaginationField(parameter));
+        PaginationField paginationField = paginationFieldMap.computeIfAbsent(
+                parameter.getClass().getName(), className -> buildPaginationField(parameter));
         int defaultPage = paginationField.getDefaultPage();
         int defaultSize = paginationField.getDefaultSize();
         int maxPage = paginationField.getMaxPage();
         int maxSize = paginationField.getMaxSize();
+        boolean reasonable = paginationField.isReasonable();
         String countColumn = paginationField.getCountColumn();
         Integer page;
         Integer size;
@@ -224,7 +225,7 @@ public class PaginationInterceptor implements Interceptor {
             size = search.getSize();
             offset = search.getOffset();
             rows = search.getRows();
-            if (StringUtils.isNotEmpty(search.getCountColumn())) {
+            if (search.getCountColumn() != null && !search.getCountColumn().isEmpty()) {
                 countColumn = search.getCountColumn();
             }
         } else {
@@ -233,14 +234,14 @@ public class PaginationInterceptor implements Interceptor {
             offset = invokeInteger(parameter, paginationField.getOffsetField());
             rows = invokeInteger(parameter, paginationField.getRowsField());
             String countColumnValue = invokeString(parameter, paginationField.getCountColumnField());
-            if (StringUtils.isNotEmpty(countColumnValue)) {
+            if (countColumnValue != null && !countColumnValue.isEmpty()) {
                 countColumn = countColumnValue;
             }
         }
         boolean usePageSize = page != null && size != null;
         boolean useOffsetRows = offset != null && rows != null;
         if (usePageSize) {
-            if (this.reasonable) {
+            if (reasonable) {
                 if (page <= 0) {
                     page = defaultPage;
                 }
@@ -257,7 +258,7 @@ public class PaginationInterceptor implements Interceptor {
             offset = (page - 1) * size;
             rows = size;
         } else if (useOffsetRows) {
-            if (this.reasonable) {
+            if (reasonable) {
                 if (rows <= 0) {
                     rows = defaultSize;
                 }
@@ -280,17 +281,33 @@ public class PaginationInterceptor implements Interceptor {
     }
 
     private PaginationField buildPaginationField(Object parameter) {
-        Pagination pagination = parameter.getClass().getAnnotation(Pagination.class);
-        int defaultPage = pagination != null && pagination.defaultPage() > 0 ? pagination.defaultPage() : this.defaultPage;
-        int defaultSize = pagination != null && pagination.defaultSize() > 0 ? pagination.defaultSize() : this.defaultSize;
-        int maxPage = pagination != null && pagination.maxPage() > 0 ? pagination.maxPage() : this.maxPage;
-        int maxSize = pagination != null && pagination.maxSize() > 0 ? pagination.maxSize() : this.maxSize;
-        String countColumn = pagination != null && pagination.hashCode() > 0 ? pagination.countColumn() : this.countColumn;
+        int defaultPage;
+        int defaultSize;
+        int maxPage;
+        int maxSize;
+        boolean reasonable;
+        String countColumn;
         Field pageField = null;
         Field sizeField = null;
         Field offsetField = null;
         Field rowsField = null;
         Field countColumnField = null;
+        Pagination pagination = parameter.getClass().getAnnotation(Pagination.class);
+        if (pagination == null) {
+            defaultPage = this.defaultPage;
+            defaultSize = this.defaultSize;
+            maxPage = this.maxPage;
+            maxSize = this.maxSize;
+            reasonable = this.reasonable;
+            countColumn = this.countColumn;
+        } else {
+            defaultPage = pagination.defaultPage() > 0 ? pagination.defaultPage() : this.defaultPage;
+            defaultSize = pagination.defaultSize() > 0 ? pagination.defaultSize() : this.defaultSize;
+            maxPage = pagination.maxPage() > 0 ? pagination.maxPage() : this.maxPage;
+            maxSize = pagination.maxSize() > 0 ? pagination.maxSize() : this.maxSize;
+            reasonable = pagination.reasonable() ? pagination.reasonable() : this.reasonable;
+            countColumn = !pagination.countColumn().isEmpty() ? pagination.countColumn() : this.countColumn;
+        }
         Field[] fields = ReflectUtils.getFields(parameter, true);
         for (Field field : fields) {
             if (autoGetParamsFromFields) {
@@ -322,7 +339,7 @@ public class PaginationInterceptor implements Interceptor {
             }
         }
         return new PaginationField(
-                defaultPage, defaultSize, maxPage, maxSize, countColumn,
+                defaultPage, defaultSize, maxPage, maxSize, reasonable, countColumn,
                 pageField, sizeField, offsetField, rowsField, countColumnField);
     }
 
