@@ -183,39 +183,28 @@ public final class ReflectUtils {
     }
 
 
-    public static String getGetterName(String fieldName) {
-        return "get" + fieldName.substring(0, 1).toUpperCase() + fieldName.substring(1);
-    }
-
-    public static Object invokeByFieldGetter(Object o, Field field) throws NoSuchMethodException, IllegalAccessException, InvocationTargetException {
-        return invoke(o, getGetterName(field.getName()));
-    }
-
-    public static Object invokeByFieldGetter(Object o, String fieldName) throws NoSuchMethodException, IllegalAccessException, InvocationTargetException {
-        return invoke(o, getGetterName(fieldName));
-    }
-
-    public static Object invokeByDeepFieldGetter(Object o, String deepFieldName) throws NoSuchMethodException, IllegalAccessException, InvocationTargetException {
-        if (!deepFieldName.contains(".")) {
-            return invokeByFieldGetter(o, deepFieldName);
-        }
-        String[] fieldNames = deepFieldName.split("\\.");
-        Object target = o;
-        for (String fieldName : fieldNames) {
-            target = invokeByFieldGetter(target, fieldName);
-            if (target == null) {
-                return null;
-            }
-        }
-        return target;
-    }
-
     public static Object invoke(Object o, Method method) throws IllegalAccessException, InvocationTargetException {
         return method.invoke(o);
     }
 
+    public static Object invoke(Object o, Method method, Object... args) throws IllegalAccessException, InvocationTargetException {
+        return method.invoke(o, args);
+    }
+
     public static Object invoke(Object o, String methodName) throws NoSuchMethodException, IllegalAccessException, InvocationTargetException {
-        return o.getClass().getMethod(methodName).invoke(o);
+        Method method = getMethod(o, methodName);
+        if (method == null) {
+            throw new NoSuchMethodException();
+        }
+        return method.invoke(o);
+    }
+
+    public static Object invoke(Object o, String methodName, Object... args) throws NoSuchMethodException, IllegalAccessException, InvocationTargetException {
+        Method method = getMethod(o, methodName);
+        if (method == null) {
+            throw new NoSuchMethodException();
+        }
+        return method.invoke(o, args);
     }
 
 

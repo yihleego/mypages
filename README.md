@@ -6,16 +6,16 @@ Many databases, one plugin.
 ## Dependency
 
 ```bash
-# git clone https://github.com/yihleego/mypages.git
-# cd mypages
-# mvn clean install
+$ git clone https://github.com/yihleego/mypages.git
+$ cd mypages
+$ mvn clean install
 ```
 
 ### Maven
 
 ```xml
 <properties>
-    <mypages.version>0.0.2</mypages.version>
+    <mypages.version>0.0.3</mypages.version>
 </properties>
 
 <dependency>
@@ -28,7 +28,7 @@ Many databases, one plugin.
 ### Gradle
 
 ```xml
-implementation 'io.leego:mypages:0.0.2'
+implementation 'io.leego:mypages:0.0.3'
 ```
 
 ## Supported

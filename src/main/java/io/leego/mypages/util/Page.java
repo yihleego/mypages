@@ -6,6 +6,8 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Queue;
 import java.util.Set;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 /**
  * @author Yihleego
@@ -46,6 +48,7 @@ public class Page<T> implements Serializable {
         this.list = list;
     }
 
+
     public static <T> Page<T> of(List<T> list, Integer page, Integer size, Long total, Long totalPages, Boolean next, Boolean previous) {
         return new Page<>(list, page, size, total, totalPages, next, previous);
     }
@@ -56,7 +59,10 @@ public class Page<T> implements Serializable {
         }
         boolean next = page * size < total;
         boolean previous = page > 1;
-        long totalPages = total % size > 0 ? total / size + 1 : total / size;
+        long totalPages = 0L;
+        if (size > 0) {
+            totalPages = total % size > 0 ? total / size + 1 : total / size;
+        }
         return new Page<>(list, page, size, total, totalPages, next, previous);
     }
 
@@ -64,31 +70,43 @@ public class Page<T> implements Serializable {
         return new Page<>(list, total);
     }
 
-    public static <T> Page<T> of(Collection<T> collection) {
-        if (collection instanceof PaginationCollection) {
-            if (collection instanceof PaginationList) {
-                return of((PaginationList<T>) collection);
-            } else if (collection instanceof PaginationSet) {
-                return of((PaginationSet<T>) collection);
-            } else if (collection instanceof PaginationQueue) {
-                return of((PaginationQueue<T>) collection);
-            }
-        } else if (collection instanceof List) {
-            return new Page<>((List<T>) collection);
-        }
-        return new Page<>(toList(collection));
+    public static <T> Page<T> empty() {
+        return new Page<>(new ArrayList<>(), 0, 0, 0L, 0L, false, false);
     }
 
+
     public static <T> Page<T> of(PaginationList<T> list) {
+        if (list == null) {
+            return empty();
+        }
         return of(list, list.getPage(), list.getSize(), list.getTotal());
     }
 
     public static <T> Page<T> of(PaginationSet<T> set) {
+        if (set == null) {
+            return empty();
+        }
         return of(toList(set), set.getPage(), set.getSize(), set.getTotal());
     }
 
     public static <T> Page<T> of(PaginationQueue<T> queue) {
+        if (queue == null) {
+            return empty();
+        }
         return of(toList(queue), queue.getPage(), queue.getSize(), queue.getTotal());
+    }
+
+    public static <T> Page<T> of(Collection<T> collection) {
+        if (collection instanceof PaginationList) {
+            return of((PaginationList<T>) collection);
+        } else if (collection instanceof PaginationSet) {
+            return of((PaginationSet<T>) collection);
+        } else if (collection instanceof PaginationQueue) {
+            return of((PaginationQueue<T>) collection);
+        } else if (collection instanceof List) {
+            return new Page<>((List<T>) collection);
+        }
+        return new Page<>(toList(collection));
     }
 
     public static <T> Page<T> of(List<T> list) {
@@ -112,6 +130,68 @@ public class Page<T> implements Serializable {
         return new Page<>(toList(queue));
     }
 
+
+    public static <T, S> Page<T> of(PaginationList<S> list, Function<? super S, ? extends T> mapper) {
+        if (list == null) {
+            return empty();
+        }
+        return of(mapping(list, mapper), list.getPage(), list.getSize(), list.getTotal());
+    }
+
+    public static <T, S> Page<T> of(PaginationSet<S> set, Function<? super S, ? extends T> mapper) {
+        if (set == null) {
+            return empty();
+        }
+        return of(mapping(set, mapper), set.getPage(), set.getSize(), set.getTotal());
+    }
+
+    public static <T, S> Page<T> of(PaginationQueue<S> queue, Function<? super S, ? extends T> mapper) {
+        if (queue == null) {
+            return empty();
+        }
+        return of(mapping(queue, mapper), queue.getPage(), queue.getSize(), queue.getTotal());
+    }
+
+    public static <T, S> Page<T> of(Collection<S> collection, Function<? super S, ? extends T> mapper) {
+        if (collection instanceof PaginationList) {
+            return of((PaginationList<S>) collection, mapper);
+        } else if (collection instanceof PaginationSet) {
+            return of((PaginationSet<S>) collection, mapper);
+        } else if (collection instanceof PaginationQueue) {
+            return of((PaginationQueue<S>) collection, mapper);
+        }
+        return new Page<>(mapping(collection, mapper));
+    }
+
+    public static <T, S> Page<T> of(List<S> list, Function<? super S, ? extends T> mapper) {
+        if (list instanceof PaginationList) {
+            return of((PaginationList<S>) list, mapper);
+        }
+        return new Page<>(mapping(list, mapper));
+    }
+
+    public static <T, S> Page<T> of(Set<S> set, Function<? super S, ? extends T> mapper) {
+        if (set instanceof PaginationSet) {
+            return of((PaginationSet<S>) set, mapper);
+        }
+        return new Page<>(mapping(set, mapper));
+    }
+
+    public static <T, S> Page<T> of(Queue<S> queue, Function<? super S, ? extends T> mapper) {
+        if (queue instanceof PaginationQueue) {
+            return of((PaginationQueue<S>) queue, mapper);
+        }
+        return new Page<>(mapping(queue, mapper));
+    }
+
+
+    private static <T, S> List<T> mapping(Collection<S> source, Function<? super S, ? extends T> mapper) {
+        if (source == null || source.isEmpty()) {
+            return new ArrayList<>();
+        }
+        return source.stream().map(mapper).collect(Collectors.toList());
+    }
+
     private static <T> List<T> toList(Collection<T> collection) {
         if (collection == null) {
             return new ArrayList<>();
@@ -119,9 +199,6 @@ public class Page<T> implements Serializable {
         return new ArrayList<>(collection);
     }
 
-    public static <T> Page<T> empty() {
-        return new Page<>(new ArrayList<>(), 0, 0, 0L, 0L, false, false);
-    }
 
     public static <T> Builder<T> builder() {
         return new Builder<>();
@@ -232,4 +309,5 @@ public class Page<T> implements Serializable {
         }
 
     }
+
 }

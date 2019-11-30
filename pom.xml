@@ -36,7 +36,7 @@
 
     <groupId>io.leego</groupId>
     <artifactId>mypages</artifactId>
-    <version>0.0.2</version>
+    <version>0.0.3</version>
     <packaging>jar</packaging>
     <name>mypages</name>
 

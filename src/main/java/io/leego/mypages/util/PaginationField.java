@@ -18,6 +18,9 @@ public class PaginationField {
     private Field rowsField;
     private Field countColumnField;
 
+    public PaginationField() {
+    }
+
     public PaginationField(int defaultPage, int defaultSize, int maxPage, int maxSize, boolean reasonable, String countColumn, Field pageField, Field sizeField, Field offsetField, Field rowsField, Field countColumnField) {
         this.defaultPage = defaultPage;
         this.defaultSize = defaultSize;

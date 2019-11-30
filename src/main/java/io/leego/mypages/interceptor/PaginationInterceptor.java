@@ -10,6 +10,7 @@ import io.leego.mypages.annotation.Rows;
 import io.leego.mypages.annotation.Size;
 import io.leego.mypages.dialect.Dialect;
 import io.leego.mypages.dialect.SqlDialect;
+import io.leego.mypages.util.BeanUtils;
 import io.leego.mypages.util.NumberUtils;
 import io.leego.mypages.util.PaginationCollectionFactory;
 import io.leego.mypages.util.PaginationField;
@@ -66,7 +67,6 @@ public class PaginationInterceptor implements Interceptor {
     private String enableCountFieldName;
     private boolean autoGetParamsFromFields;
     private boolean reasonable;
-    private boolean returnEmptyIfInvalid;
     private SqlDialect sqlDialect;
     private Dialect dialect;
     private ConcurrentMap<String, MappedStatement> countMsMap = new ConcurrentHashMap<>(64);
@@ -82,9 +82,6 @@ public class PaginationInterceptor implements Interceptor {
         }
         PaginationParam param = analyseParameter(parameter);
         if (!param.isPageable()) {
-            if (returnEmptyIfInvalid) {
-                return PaginationCollectionFactory.empty(returnType);
-            }
             return invocation.proceed();
         }
 
@@ -292,7 +289,7 @@ public class PaginationInterceptor implements Interceptor {
         Field offsetField = null;
         Field rowsField = null;
         Field countColumnField = null;
-        Pagination pagination = parameter.getClass().getAnnotation(Pagination.class);
+        Pagination pagination = ReflectUtils.getAnnotation(parameter, Pagination.class);
         if (pagination == null) {
             defaultPage = this.defaultPage;
             defaultSize = this.defaultSize;
@@ -308,6 +305,9 @@ public class PaginationInterceptor implements Interceptor {
             reasonable = pagination.reasonable() ? pagination.reasonable() : this.reasonable;
             countColumn = !pagination.countColumn().isEmpty() ? pagination.countColumn() : this.countColumn;
         }
+        if (parameter instanceof Search) {
+            return new PaginationField();
+        }
         Field[] fields = ReflectUtils.getFields(parameter, true);
         for (Field field : fields) {
             if (autoGetParamsFromFields) {
@@ -322,19 +322,20 @@ public class PaginationInterceptor implements Interceptor {
                 } else if (field.getName().equals(countColumnFieldName)) {
                     countColumnField = field;
                 }
-            }
-            Annotation[] annotations = field.getDeclaredAnnotations();
-            for (Annotation annotation : annotations) {
-                if (annotation instanceof Page) {
-                    pageField = field;
-                } else if (annotation instanceof Size) {
-                    sizeField = field;
-                } else if (annotation instanceof Offset) {
-                    offsetField = field;
-                } else if (annotation instanceof Rows) {
-                    rowsField = field;
-                } else if (annotation instanceof CountColumn) {
-                    countColumnField = field;
+            } else {
+                Annotation[] annotations = field.getDeclaredAnnotations();
+                for (Annotation annotation : annotations) {
+                    if (annotation instanceof Page) {
+                        pageField = field;
+                    } else if (annotation instanceof Size) {
+                        sizeField = field;
+                    } else if (annotation instanceof Offset) {
+                        offsetField = field;
+                    } else if (annotation instanceof Rows) {
+                        rowsField = field;
+                    } else if (annotation instanceof CountColumn) {
+                        countColumnField = field;
+                    }
                 }
             }
         }
@@ -384,7 +385,7 @@ public class PaginationInterceptor implements Interceptor {
             return null;
         }
         try {
-            return ReflectUtils.invokeByFieldGetter(o, field);
+            return BeanUtils.read(o, field);
         } catch (Exception ignored) {
         }
         return null;
@@ -449,11 +450,6 @@ public class PaginationInterceptor implements Interceptor {
         return this;
     }
 
-    public PaginationInterceptor returnEmptyIfInvalid(boolean returnEmptyIfInvalid) {
-        this.returnEmptyIfInvalid = returnEmptyIfInvalid;
-        return this;
-    }
-
     public PaginationInterceptor sqlDialect(SqlDialect sqlDialect) {
         Objects.requireNonNull(sqlDialect);
         this.sqlDialect = sqlDialect;
@@ -510,10 +506,6 @@ public class PaginationInterceptor implements Interceptor {
         this.reasonable = reasonable;
     }
 
-    public void setReturnEmptyIfInvalid(boolean returnEmptyIfInvalid) {
-        this.returnEmptyIfInvalid = returnEmptyIfInvalid;
-    }
-
     public void setSqlDialect(SqlDialect sqlDialect) {
         this.sqlDialect = sqlDialect;
         this.dialect = sqlDialect.getDialect();
@@ -566,10 +558,6 @@ public class PaginationInterceptor implements Interceptor {
 
     public boolean isReasonable() {
         return reasonable;
-    }
-
-    public boolean isReturnEmptyIfInvalid() {
-        return returnEmptyIfInvalid;
     }
 
     public SqlDialect getSqlDialect() {
