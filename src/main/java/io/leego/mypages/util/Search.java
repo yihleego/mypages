@@ -7,15 +7,15 @@ import java.io.Serializable;
  */
 public class Search implements Serializable {
     private static final long serialVersionUID = -1134397368997770745L;
-    /** page number */
+    /** One-based page index */
     protected Integer page;
-    /** page size */
+    /** The size of the page to be returned */
     protected Integer size;
-    /** offset */
+    /** Zero-based row index */
     protected Integer offset;
-    /** rows */
+    /** The rows of the page to be returned */
     protected Integer rows;
-    /** count column */
+    /** Uses specify a mapped column for counting property or field */
     protected String countColumn;
 
     public Search() {
@@ -24,6 +24,14 @@ public class Search implements Serializable {
     public Search(Integer page, Integer size) {
         this.page = page;
         this.size = size;
+    }
+
+    public Search(Integer page, Integer size, Integer offset, Integer rows, String countColumn) {
+        this.page = page;
+        this.size = size;
+        this.offset = offset;
+        this.rows = rows;
+        this.countColumn = countColumn;
     }
 
     public Integer getPage() {

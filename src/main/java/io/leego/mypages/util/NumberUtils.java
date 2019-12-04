@@ -7,6 +7,9 @@ public final class NumberUtils {
     private NumberUtils() {
     }
 
+    /**
+     * Returns <code>true</code> if the string is a signed decimal integer.
+     */
     public static boolean isInteger(String text) {
         if (text == null || text.length() == 0) {
             return false;
@@ -46,6 +49,9 @@ public final class NumberUtils {
         return true;
     }
 
+    /**
+     * Parses the string argument as a signed decimal integer.
+     */
     public static Integer parseInteger(Object value) {
         if (value == null) {
             return null;

@@ -8,6 +8,7 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
 /**
+ * Is used to specify a mapped column for counting property or field. Defaults to "*".
  * @author Yihleego
  */
 @Retention(RetentionPolicy.RUNTIME)
@@ -16,6 +17,7 @@ import java.lang.annotation.Target;
 @Inherited
 public @interface CountColumn {
 
+    /** Uses <code>defaultValue</code> if current field is absent */
     String defaultValue() default "";
 
 }

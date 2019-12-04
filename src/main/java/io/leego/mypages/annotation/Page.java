@@ -8,6 +8,7 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
 /**
+ * One-based page index
  * @author Yihleego
  */
 @Retention(RetentionPolicy.RUNTIME)

@@ -1,11 +1,6 @@
 package io.leego.mypages.dialect;
 
 import io.leego.mypages.util.PaginationParam;
-import org.apache.ibatis.cache.CacheKey;
-import org.apache.ibatis.mapping.BoundSql;
-import org.apache.ibatis.mapping.MappedStatement;
-
-import java.util.Map;
 
 /**
  * @author Yihleego
@@ -13,13 +8,15 @@ import java.util.Map;
 public class InformixDialect extends AbstractDialect {
 
     @Override
-    public String getPaginationSql(String sql, int offset, int rows) {
-        return "SELECT  SKIP ?  FIRST ?  * FROM ( " + sql + " ) _TT ";
+    public String getPaginationSql(String sql) {
+        return "SELECT SKIP ? FIRST ? * FROM (" + sql + ")";
     }
 
     @Override
-    public Object[] getPaginationParam(MappedStatement ms, Map<Object, Object> paramMap, BoundSql boundSql, CacheKey pageKey, PaginationParam paginationParam) {
-        return new Object[]{paginationParam.getOffset(), paginationParam.getRows()};
+    public Object[] getPaginationParam(PaginationParam paginationParam) {
+        return new Object[]{
+                paginationParam.getOffset(),
+                paginationParam.getRows()};
     }
 
 }

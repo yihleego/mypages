@@ -15,7 +15,7 @@ $ mvn clean install
 
 ```xml
 <properties>
-    <mypages.version>0.0.3</mypages.version>
+    <mypages.version>0.1.0</mypages.version>
 </properties>
 
 <dependency>
@@ -28,7 +28,7 @@ $ mvn clean install
 ### Gradle
 
 ```xml
-implementation 'io.leego:mypages:0.0.3'
+implementation 'io.leego:mypages:0.1.0'
 ```
 
 ## Supported
@@ -41,11 +41,11 @@ implementation 'io.leego:mypages:0.0.3'
 |H2|✔|Phoenix|✔|
 |Apache Derby|✔|HyperSQL|✔|
 |Informix|✔|TiDB|✔|
-|SQL Server|❌|Sybase|❌|
+|SQL Server|✔|Apache Hive|✔|
+|Snowflake|❌|Azure|❌|
 |Exasol|❌|ClickHouse|❌|
 |Cassandra|❌|Vertica|❌|
-|Greenplum|❌|Apache Hive|❌|
-|Snowflake|❌|Azure|❌|
+|Greenplum|❌|Sybase|❌|
 |Amazon Redshift|❌|
 
 ## Documentation

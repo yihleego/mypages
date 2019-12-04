@@ -8,12 +8,12 @@ import java.util.TreeSet;
  */
 public class PaginationTreeSet<E> extends TreeSet<E> implements PaginationSet<E> {
     private static final long serialVersionUID = -7869609808375291201L;
-    /** total number of data */
-    private transient Long total;
-    /** current page number */
-    private transient Integer page;
-    /** page size */
-    private transient Integer size;
+    /** Total quantity */
+    private Long total;
+    /** One-based page index */
+    private Integer page;
+    /** The size of the page to be returned */
+    private Integer size;
 
     public PaginationTreeSet() {
     }

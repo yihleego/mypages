@@ -19,7 +19,9 @@ public enum SqlDialect {
     ORACLE("Oracle", OracleDialect.class),
     DB2("DB2", DB2Dialect.class),
     INFORMIX("Informix", InformixDialect.class),
-    DERBY("Derby", DerbyDialect.class);
+    DERBY("Derby", DerbyDialect.class),
+    SQL_SERVER("SQL Server", DerbyDialect.class),
+    HIVE("Apache Hive", HiveDialect.class);
 
     private final String name;
     private final Class<? extends Dialect> dialectClass;
@@ -39,9 +41,9 @@ public enum SqlDialect {
 
     public Dialect getDialect() {
         try {
-            // Instantiate the dialect instance using the reflection
-            return dialectClass.newInstance();
-        } catch (IllegalAccessException | InstantiationException e) {
+            // Uses the constructor represented by the Constructor object to initialize a new instance
+            return dialectClass.getConstructor().newInstance();
+        } catch (Exception e) {
             throw new PaginationException(e);
         }
     }

@@ -8,6 +8,7 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
 /**
+ * The size of the page to be returned
  * @author Yihleego
  */
 @Retention(RetentionPolicy.RUNTIME)

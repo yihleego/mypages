@@ -8,6 +8,7 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
 /**
+ * Disables counting capability
  * @author Yihleego
  */
 @Retention(RetentionPolicy.RUNTIME)

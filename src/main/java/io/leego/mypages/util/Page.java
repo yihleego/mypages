@@ -14,19 +14,19 @@ import java.util.stream.Collectors;
  */
 public class Page<T> implements Serializable {
     private static final long serialVersionUID = -5524075755628202327L;
-    /** list */
+    /** Data list */
     protected List<T> list;
-    /** page number one-based page index */
+    /** One-based page index */
     protected Integer page;
-    /** the size of the page to be returned */
+    /** The size of the page to be returned */
     protected Integer size;
-    /** total quantity */
+    /** Total quantity */
     protected Long total;
-    /** total pages */
+    /** Total pages */
     protected Long totalPages;
-    /** has next page */
+    /** Next page */
     protected Boolean next;
-    /** has previous page */
+    /** Previous page */
     protected Boolean previous;
 
     public Page(List<T> list, Integer page, Integer size, Long total, Long totalPages, Boolean next, Boolean previous) {

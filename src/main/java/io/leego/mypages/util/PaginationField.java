@@ -17,11 +17,12 @@ public class PaginationField {
     private Field offsetField;
     private Field rowsField;
     private Field countColumnField;
+    private boolean mapType;
 
     public PaginationField() {
     }
 
-    public PaginationField(int defaultPage, int defaultSize, int maxPage, int maxSize, boolean reasonable, String countColumn, Field pageField, Field sizeField, Field offsetField, Field rowsField, Field countColumnField) {
+    public PaginationField(int defaultPage, int defaultSize, int maxPage, int maxSize, boolean reasonable, String countColumn, Field pageField, Field sizeField, Field offsetField, Field rowsField, Field countColumnField, boolean mapType) {
         this.defaultPage = defaultPage;
         this.defaultSize = defaultSize;
         this.maxPage = maxPage;
@@ -33,6 +34,7 @@ public class PaginationField {
         this.offsetField = offsetField;
         this.rowsField = rowsField;
         this.countColumnField = countColumnField;
+        this.mapType = mapType;
     }
 
     public int getDefaultPage() {
@@ -121,5 +123,13 @@ public class PaginationField {
 
     public void setCountColumnField(Field countColumnField) {
         this.countColumnField = countColumnField;
+    }
+
+    public boolean isMapType() {
+        return mapType;
+    }
+
+    public void setMapType(boolean mapType) {
+        this.mapType = mapType;
     }
 }

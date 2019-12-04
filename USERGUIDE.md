@@ -9,7 +9,7 @@ Please make sure that Java version is 1.8 and above.
 
 ```xml
 <properties>
-    <mypages.version>0.0.3</mypages.version>
+    <mypages.version>0.1.0</mypages.version>
 </properties>
 
 <dependency>
@@ -22,7 +22,7 @@ Please make sure that Java version is 1.8 and above.
 ### Gradle Dependency
 
 ```xml
-implementation 'io.leego:mypages:0.0.3'
+implementation 'io.leego:mypages:0.1.0'
 ```
 
 
@@ -117,7 +117,7 @@ public class UserServiceImpl implements UserService {
 
 # Enable Pagination
 
-### Extends Search
+### 1.Extends Search
 
 Defined a class extends ```io.leego.mypages.util.Search```
 
@@ -128,7 +128,7 @@ public class SearchDTO extends io.leego.mypages.util.Search {
 }
 ```
 
-### Annotation
+### 2.Annotation
 
 Using ```@Pagination```, ```@Page```, ```@Size```, ```@Offset```, ```@Rows``` annotations.
 
@@ -158,7 +158,7 @@ public class SearchDTO {
 }
 ```
 
-### Get Parameters From Fields
+### 3.Get Parameters From Fields
 
 Defined a class with paging parameters, configure parameters field names.
 
@@ -230,7 +230,7 @@ new PaginationInterceptor()
 
 # Query Results
 
-If the paging query proceed, it will return an instance of the ```PaginationCollection```.
+If the paging query proceed, it will return an instance of the ```PaginationCollection```
 
 Assume you have a mapper interface defined like the following:
 
@@ -241,28 +241,41 @@ public interface UserMapper {
 }
 ```
 
-### Ready-Made Wrapper Class
+### 1.Ready-Made Wrapper Class
 
-Using inner paging query result wrapper class: 
-```io.leego.mypages.util.Page```
+Using inner paging query result wrapper class: ```io.leego.mypages.util.Page```
 
 ```java
-Page<User> result = Page.of(userMapper.listUser(search));
+List<User> list = userMapper.listUser(search);
+Page<User> result = Page.of(list);
 ```
 
-### Custom Class & Util
+```java
+List<User> list = userMapper.listUser(search);
+Page<UserDTO> result = Page.of(list, user -> new UserDTO(user.getId(), user.getName()));
+```
+
+### 2.Custom Class & Util
 
 For example:
 
 ```java
-public class PageResult<T> {
-    private List<T> list;
-    private Integer page;
-    private Integer size;
-    private Long total;
-    private Long totalPages;
-    private Boolean next;
-    private Boolean previous;
+public class PageResult<T> implements Serializable {
+    private static final long serialVersionUID = 3214571808482585491L;
+    /** list */
+    protected List<T> list;
+    /** one-based page index */
+    protected Integer page;
+    /** the size of the page to be returned */
+    protected Integer size;
+    /** total quantity */
+    protected Long total;
+    /** total pages */
+    protected Long totalPages;
+    /** has next page */
+    protected Boolean next;
+    /** has previous page */
+    protected Boolean previous;
 
     public PageResult(List<T> list, Integer page, Integer size, Long total, Long totalPages, Boolean next, Boolean previous) {
         this.list = list;
@@ -293,7 +306,10 @@ public class PageResult<T> {
         }
         boolean next = page * size < total;
         boolean previous = page > 1;
-        long totalPages = total % size > 0 ? total / size + 1 : total / size;
+        long totalPages = 0L;
+        if (size > 0) {
+            totalPages = total % size > 0 ? total / size + 1 : total / size;
+        }
         return new PageResult<>(list, page, size, total, totalPages, next, previous);
     }
 
@@ -301,7 +317,14 @@ public class PageResult<T> {
         return new PageResult<>(list, total);
     }
 
+    public static <T> PageResult<T> empty() {
+        return new PageResult<>(new ArrayList<>(), 0, 0, 0L, 0L, false, false);
+    }
+
     public static <T> PageResult<T> of(Collection<T> collection) {
+        if (collection instanceof List) {
+            return new PageResult<>((List<T>) collection);
+        }
         return new PageResult<>(toList(collection));
     }
 
@@ -319,38 +342,128 @@ public class PageResult<T> {
 
     private static <T> List<T> toList(Collection<T> collection) {
         if (collection == null) {
-            return Collections.emptyList();
+            return new ArrayList<>();
         }
         return new ArrayList<>(collection);
     }
 
-    public static <T> PageResult<T> empty() {
-        return new PageResult<>(Collections.emptyList(), 0, 0, 0L, 0L, false, false);
+    public static <T> Builder<T> builder() {
+        return new Builder<>();
     }
-    
-    /*  getter setter */
+
+    public List<T> getList() {
+        return list;
+    }
+
+    public void setList(List<T> list) {
+        this.list = list;
+    }
+
+    public Integer getPage() {
+        return page;
+    }
+
+    public void setPage(Integer page) {
+        this.page = page;
+    }
+
+    public Integer getSize() {
+        return size;
+    }
+
+    public void setSize(Integer size) {
+        this.size = size;
+    }
+
+    public Long getTotal() {
+        return total;
+    }
+
+    public void setTotal(Long total) {
+        this.total = total;
+    }
+
+    public Long getTotalPages() {
+        return totalPages;
+    }
+
+    public void setTotalPages(Long totalPages) {
+        this.totalPages = totalPages;
+    }
+
+    public Boolean getNext() {
+        return next;
+    }
+
+    public void setNext(Boolean next) {
+        this.next = next;
+    }
+
+    public Boolean getPrevious() {
+        return previous;
+    }
+
+    public void setPrevious(Boolean previous) {
+        this.previous = previous;
+    }
+
+    public static class Builder<T> {
+        private List<T> list;
+        private Integer page;
+        private Integer size;
+        private Long total;
+        private Long totalPages;
+        private Boolean next;
+        private Boolean previous;
+
+        public Builder<T> list(List<T> list) {
+            this.list = list;
+            return this;
+        }
+
+        public Builder<T> page(Integer page) {
+            this.page = page;
+            return this;
+        }
+
+        public Builder<T> size(Integer size) {
+            this.size = size;
+            return this;
+        }
+
+        public Builder<T> total(Long total) {
+            this.total = total;
+            return this;
+        }
+
+        public Builder<T> totalPages(Long totalPages) {
+            this.totalPages = totalPages;
+            return this;
+        }
+
+        public Builder<T> next(Boolean next) {
+            this.next = next;
+            return this;
+        }
+
+        public Builder<T> previous(Boolean previous) {
+            this.previous = previous;
+            return this;
+        }
+
+        public PageResult<T> build() {
+            return new PageResult<>(list, page, size, total, totalPages, next, previous);
+        }
+
+    }
 
 }
+
 ```
 
 ```java
 public final class PageUtils {
     private PageUtils() {
-    }
-
-    public static <T> PageResult<T> of(Collection<T> collection) {
-        if (collection instanceof PaginationCollection) {
-            if (collection instanceof PaginationList) {
-                return of((PaginationList<T>) collection);
-            } else if (collection instanceof PaginationSet) {
-                return of((PaginationSet<T>) collection);
-            } else if (collection instanceof PaginationQueue) {
-                return of((PaginationQueue<T>) collection);
-            }
-        } else if (collection instanceof List) {
-            return new PageResult<>((List<T>) collection);
-        }
-        return new PageResult<>(toList(collection));
     }
 
     public static <T> PageResult<T> of(PaginationList<T> list) {
@@ -374,6 +487,19 @@ public final class PageUtils {
         return PageResult.of(toList(queue), queue.getPage(), queue.getSize(), queue.getTotal());
     }
 
+    public static <T> PageResult<T> of(Collection<T> collection) {
+        if (collection instanceof PaginationList) {
+            return of((PaginationList<T>) collection);
+        } else if (collection instanceof PaginationSet) {
+            return of((PaginationSet<T>) collection);
+        } else if (collection instanceof PaginationQueue) {
+            return of((PaginationQueue<T>) collection);
+        } else if (collection instanceof List) {
+            return new PageResult<>((List<T>) collection);
+        }
+        return new PageResult<>(toList(collection));
+    }
+
     public static <T> PageResult<T> of(List<T> list) {
         if (list instanceof PaginationList) {
             return of((PaginationList<T>) list);
@@ -395,15 +521,84 @@ public final class PageUtils {
         return new PageResult<>(toList(queue));
     }
 
+
+    public static <T, S> PageResult<T> of(PaginationList<S> list, Function<? super S, ? extends T> mapper) {
+        if (list == null) {
+            return PageResult.empty();
+        }
+        return PageResult.of(mapping(list, mapper), list.getPage(), list.getSize(), list.getTotal());
+    }
+
+    public static <T, S> PageResult<T> of(PaginationSet<S> set, Function<? super S, ? extends T> mapper) {
+        if (set == null) {
+            return PageResult.empty();
+        }
+        return PageResult.of(mapping(set, mapper), set.getPage(), set.getSize(), set.getTotal());
+    }
+
+    public static <T, S> PageResult<T> of(PaginationQueue<S> queue, Function<? super S, ? extends T> mapper) {
+        if (queue == null) {
+            return PageResult.empty();
+        }
+        return PageResult.of(mapping(queue, mapper), queue.getPage(), queue.getSize(), queue.getTotal());
+    }
+
+    public static <T, S> PageResult<T> of(Collection<S> collection, Function<? super S, ? extends T> mapper) {
+        if (collection instanceof PaginationList) {
+            return of((PaginationList<S>) collection, mapper);
+        } else if (collection instanceof PaginationSet) {
+            return of((PaginationSet<S>) collection, mapper);
+        } else if (collection instanceof PaginationQueue) {
+            return of((PaginationQueue<S>) collection, mapper);
+        }
+        return new PageResult<>(mapping(collection, mapper));
+    }
+
+    public static <T, S> PageResult<T> of(List<S> list, Function<? super S, ? extends T> mapper) {
+        if (list instanceof PaginationList) {
+            return of((PaginationList<S>) list, mapper);
+        }
+        return new PageResult<>(mapping(list, mapper));
+    }
+
+    public static <T, S> PageResult<T> of(Set<S> set, Function<? super S, ? extends T> mapper) {
+        if (set instanceof PaginationSet) {
+            return of((PaginationSet<S>) set, mapper);
+        }
+        return new PageResult<>(mapping(set, mapper));
+    }
+
+    public static <T, S> PageResult<T> of(Queue<S> queue, Function<? super S, ? extends T> mapper) {
+        if (queue instanceof PaginationQueue) {
+            return of((PaginationQueue<S>) queue, mapper);
+        }
+        return new PageResult<>(mapping(queue, mapper));
+    }
+
+
+    private static <T, S> List<T> mapping(Collection<S> source, Function<? super S, ? extends T> mapper) {
+        if (source == null || source.isEmpty()) {
+            return new ArrayList<>();
+        }
+        return source.stream().map(mapper).collect(Collectors.toList());
+    }
+
     private static <T> List<T> toList(Collection<T> collection) {
         if (collection == null) {
-            return Collections.emptyList();
+            return new ArrayList<>();
         }
         return new ArrayList<>(collection);
     }
+
 }
 ```
 
 ```java
-PageResult<User> result = PageUtils.of(userMapper.listUser(search));
+List<User> list = userMapper.listUser(search);
+PageResult<User> result = PageUtils.of(list);
+```
+
+```java
+List<User> list = userMapper.listUser(search);
+PageResult<UserDTO> result = PageUtils.of(list, user -> new UserDTO(user.getId(), user.getName()));
 ```

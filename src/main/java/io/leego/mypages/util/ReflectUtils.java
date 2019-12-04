@@ -141,7 +141,7 @@ public final class ReflectUtils {
     }
 
     public static Method getMethod(Object o, String methodName) {
-        return getMethod(o.getClass(), methodName);
+        return getMethod(o.getClass(), methodName, (Class<?>[]) null);
     }
 
     public static Method getMethod(Object o, String methodName, Class<?>... parameterTypes) {
@@ -149,16 +149,17 @@ public final class ReflectUtils {
     }
 
     public static Method getMethod(Class<?> clazz, String methodName) {
-        return getMethod(clazz, methodName, (Class<?>) null);
+        return getMethod(clazz, methodName, (Class<?>[]) null);
     }
 
     public static Method getMethod(Class<?> clazz, String methodName, Class<?>... parameterTypes) {
         Class<?> targetClass = clazz;
         while (targetClass != null && targetClass != Object.class) {
-            Method method = null;
+            Method method;
             try {
                 method = targetClass.getDeclaredMethod(methodName, parameterTypes);
             } catch (NoSuchMethodException ignored) {
+                return null;
             }
             if (method != null) {
                 return method;

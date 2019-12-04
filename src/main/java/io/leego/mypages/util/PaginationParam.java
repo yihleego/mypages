@@ -4,17 +4,17 @@ package io.leego.mypages.util;
  * @author Yihleego
  */
 public class PaginationParam {
-    /** page number */
-    private Integer page;
-    /** page size */
-    private Integer size;
-    /** offset */
-    private Integer offset;
-    /** rows */
-    private Integer rows;
-    /** count column */
-    private String countColumn;
-    /** pageable */
+    /** One-based page index */
+    protected Integer page;
+    /** The size of the page to be returned */
+    protected Integer size;
+    /** Zero-based row index */
+    protected Integer offset;
+    /** The rows of the page to be returned */
+    protected Integer rows;
+    /** Uses specify a mapped column for counting property or field */
+    protected String countColumn;
+    /** Is pageable */
     private boolean pageable;
 
     public PaginationParam() {

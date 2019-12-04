@@ -17,12 +17,17 @@ import java.util.Map;
  * @author Yihleego
  */
 public abstract class AbstractDialect implements Dialect {
-    private static final String ASTERISK = "*";
-    private static final String PAGINATION_PARAM = "PAGINATION_PARAM";
+    protected static final String ASTERISK = "*";
+    protected static final String PAGINATION_PARAM = "MP_PAGINATION_PARAM";
+
+    @Override
+    public String getPaginationSql(String sql, int offset, int rows) {
+        return getPaginationSql(sql);
+    }
 
     @Override
     public String getCountSql(String sql) {
-        return getCountSql(sql, ASTERISK);
+        return "SELECT COUNT(" + ASTERISK + ") FROM (" + sql + ") MP_TCT";
     }
 
     @Override
@@ -30,7 +35,7 @@ public abstract class AbstractDialect implements Dialect {
         if (column == null || column.isEmpty()) {
             column = ASTERISK;
         }
-        return "SELECT COUNT(" + column + ") FROM (" + sql + ") _TCT";
+        return "SELECT COUNT(" + column + ") FROM (" + sql + ") MP_TCT";
     }
 
     @Override
@@ -39,7 +44,7 @@ public abstract class AbstractDialect implements Dialect {
         if (parameter == null) {
             paramMap = new HashMap<>();
         } else if (parameter instanceof Map) {
-            paramMap = new HashMap<>((Map) parameter);
+            paramMap = new HashMap<>((Map<?, ?>) parameter);
         } else {
             paramMap = new HashMap<>();
             boolean hasTypeHandler = ms.getConfiguration().getTypeHandlerRegistry().hasTypeHandler(parameter.getClass());
@@ -56,7 +61,7 @@ public abstract class AbstractDialect implements Dialect {
         } else {
             newParameterMappings = new ArrayList<>(boundSql.getParameterMappings());
         }
-        Object[] params = getPaginationParam(ms, paramMap, boundSql, pageKey, paginationParam);
+        Object[] params = getPaginationParam(paginationParam);
         for (int i = 0; i < params.length; i++) {
             String property = PAGINATION_PARAM + i;
             paramMap.put(property, params[i]);
@@ -70,6 +75,6 @@ public abstract class AbstractDialect implements Dialect {
         return paramMap;
     }
 
-    public abstract Object[] getPaginationParam(MappedStatement ms, Map<Object, Object> paramMap, BoundSql boundSql, CacheKey pageKey, PaginationParam paginationParam);
+    public abstract Object[] getPaginationParam(PaginationParam paginationParam);
 
 }

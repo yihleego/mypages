@@ -8,12 +8,12 @@ import java.util.LinkedList;
  */
 public class PaginationLinkedList<E> extends LinkedList<E> implements PaginationList<E> {
     private static final long serialVersionUID = -2964505756498503802L;
-    /** total number of data */
-    private transient Long total;
-    /** current page number */
-    private transient Integer page;
-    /** page size */
-    private transient Integer size;
+    /** Total quantity */
+    private Long total;
+    /** One-based page index */
+    private Integer page;
+    /** The size of the page to be returned */
+    private Integer size;
 
     public PaginationLinkedList() {
     }

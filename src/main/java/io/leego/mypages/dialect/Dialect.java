@@ -10,6 +10,8 @@ import org.apache.ibatis.mapping.MappedStatement;
  */
 public interface Dialect {
 
+    String getPaginationSql(String sql);
+
     String getPaginationSql(String sql, int offset, int rows);
 
     String getCountSql(String sql);
