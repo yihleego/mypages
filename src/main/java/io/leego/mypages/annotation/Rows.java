@@ -12,7 +12,7 @@ import java.lang.annotation.Target;
  * @author Yihleego
  */
 @Retention(RetentionPolicy.RUNTIME)
-@Target(ElementType.FIELD)
+@Target({ElementType.FIELD, ElementType.METHOD})
 @Documented
 @Inherited
 public @interface Rows {

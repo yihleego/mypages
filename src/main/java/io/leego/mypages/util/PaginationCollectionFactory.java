@@ -73,7 +73,7 @@ public class PaginationCollectionFactory {
                 return new PaginationPriorityQueue<>(total, page, size);
             }
         }
-        throw new UnsupportedReturnTypeException("Custom type is not supported, please use List or Set");
+        throw new UnsupportedReturnTypeException("Custom type is not supported, please use Java Collection");
     }
 
     public static Collection<?> empty(Class<?> returnType) {

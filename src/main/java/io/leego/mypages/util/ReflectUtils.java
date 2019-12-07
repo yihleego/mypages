@@ -183,28 +183,35 @@ public final class ReflectUtils {
         return methodList.toArray(new Method[0]);
     }
 
+    public static Method[] getMethods(Object o, boolean excludeStatic) {
+        return getMethods(o.getClass(), excludeStatic);
+    }
+
+    public static Method[] getMethods(Class<?> clazz, boolean excludeStatic) {
+        List<Method> methodList = new ArrayList<>();
+        Class<?> targetClass = clazz;
+        while (targetClass != null && targetClass != Object.class) {
+            Method[] methods = targetClass.getDeclaredMethods();
+            if (excludeStatic) {
+                for (Method method : methods) {
+                    if (!isStatic(method)) {
+                        methodList.add(method);
+                    }
+                }
+            } else {
+                Collections.addAll(methodList, targetClass.getDeclaredMethods());
+            }
+            targetClass = targetClass.getSuperclass();
+        }
+        return methodList.toArray(new Method[0]);
+    }
+
 
     public static Object invoke(Object o, Method method) throws IllegalAccessException, InvocationTargetException {
         return method.invoke(o);
     }
 
     public static Object invoke(Object o, Method method, Object... args) throws IllegalAccessException, InvocationTargetException {
-        return method.invoke(o, args);
-    }
-
-    public static Object invoke(Object o, String methodName) throws NoSuchMethodException, IllegalAccessException, InvocationTargetException {
-        Method method = getMethod(o, methodName);
-        if (method == null) {
-            throw new NoSuchMethodException();
-        }
-        return method.invoke(o);
-    }
-
-    public static Object invoke(Object o, String methodName, Object... args) throws NoSuchMethodException, IllegalAccessException, InvocationTargetException {
-        Method method = getMethod(o, methodName);
-        if (method == null) {
-            throw new NoSuchMethodException();
-        }
         return method.invoke(o, args);
     }
 

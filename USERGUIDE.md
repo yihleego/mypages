@@ -5,11 +5,11 @@ Please make sure that Java version is 1.8 and above.
 
 # Installation
 
-### Maven Dependency
+## Maven Dependency
 
 ```xml
 <properties>
-    <mypages.version>0.1.0</mypages.version>
+    <mypages.version>0.1.1</mypages.version>
 </properties>
 
 <dependency>
@@ -19,10 +19,10 @@ Please make sure that Java version is 1.8 and above.
 </dependency>
 ```
 
-### Gradle Dependency
+## Gradle Dependency
 
 ```xml
-implementation 'io.leego:mypages:0.1.0'
+implementation 'io.leego:mypages:0.1.1'
 ```
 
 
@@ -32,7 +32,7 @@ To use MyBatis with Spring you need at least two things defined in the Spring ap
 
 In MyBatis-Spring, an SqlSessionFactoryBean is used to create an SqlSessionFactory. To configure the factory bean, put the following in the Spring configuration file:
 
-### Spring XML
+## Spring XML
 
 ```xml
 <bean id="sqlSessionFactoryBean" class="org.mybatis.spring.SqlSessionFactoryBean">
@@ -52,7 +52,7 @@ In MyBatis-Spring, an SqlSessionFactoryBean is used to create an SqlSessionFacto
 </bean>
 ```
 
-### Spring Boot
+## Spring Boot
 
 ```java
 @Configuration
@@ -117,7 +117,7 @@ public class UserServiceImpl implements UserService {
 
 # Enable Pagination
 
-### 1.Extends Search
+## 1.Extends Search
 
 Defined a class extends ```io.leego.mypages.util.Search```
 
@@ -128,9 +128,9 @@ public class SearchDTO extends io.leego.mypages.util.Search {
 }
 ```
 
-### 2.Annotation
+## 2.Annotations
 
-Using ```@Pagination```, ```@Page```, ```@Size```, ```@Offset```, ```@Rows``` annotations.
+Using ```@Pagination```, ```@Page```, ```@Size```, ```@Offset```, ```@Rows```, ```@CountColumn``` annotations.
 
 ```java
 @Pagination
@@ -158,7 +158,7 @@ public class SearchDTO {
 }
 ```
 
-### 3.Get Parameters From Fields
+## 3.Get Parameters From Fields
 
 Defined a class with paging parameters, configure parameters field names.
 
@@ -241,7 +241,7 @@ public interface UserMapper {
 }
 ```
 
-### 1.Ready-Made Wrapper Class
+## 1.Ready-Made Wrapper Class
 
 Using inner paging query result wrapper class: ```io.leego.mypages.util.Page```
 
@@ -255,7 +255,7 @@ List<User> list = userMapper.listUser(search);
 Page<UserDTO> result = Page.of(list, user -> new UserDTO(user.getId(), user.getName()));
 ```
 
-### 2.Custom Class & Util
+## 2.Custom Class & Util
 
 For example:
 

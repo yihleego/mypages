@@ -12,12 +12,12 @@ import java.lang.annotation.Target;
  * @author Yihleego
  */
 @Retention(RetentionPolicy.RUNTIME)
-@Target(ElementType.FIELD)
+@Target({ElementType.FIELD, ElementType.METHOD})
 @Documented
 @Inherited
 public @interface CountColumn {
 
-    /** Uses <code>defaultValue</code> if current field is absent */
+    /** Uses <code>defaultValue</code> if count-column is absent */
     String defaultValue() default "";
 
 }

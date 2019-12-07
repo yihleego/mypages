@@ -7,10 +7,19 @@ import java.util.Collection;
  */
 public interface PaginationCollection<E> extends Collection<E> {
 
+    /**
+     * Returns total number of data.
+     */
     Long getTotal();
 
+    /**
+     * Returns number of the page index.
+     */
     Integer getPage();
 
+    /**
+     * Returns number of the page size.
+     */
     Integer getSize();
 
 }

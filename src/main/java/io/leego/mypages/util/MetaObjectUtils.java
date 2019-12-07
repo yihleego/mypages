@@ -32,7 +32,7 @@ public class MetaObjectUtils {
             }
         }
         if (method == null) {
-            throw new PaginationException();
+            throw new PaginationException("The class '" + classNames + "' cannot be located");
         }
     }
 
