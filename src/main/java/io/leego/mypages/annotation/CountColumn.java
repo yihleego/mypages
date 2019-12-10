@@ -16,8 +16,4 @@ import java.lang.annotation.Target;
 @Documented
 @Inherited
 public @interface CountColumn {
-
-    /** Uses <code>defaultValue</code> if count-column is absent */
-    String defaultValue() default "";
-
 }

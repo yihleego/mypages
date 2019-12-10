@@ -9,7 +9,7 @@ Please make sure that Java version is 1.8 and above.
 
 ```xml
 <properties>
-    <mypages.version>0.1.1</mypages.version>
+    <mypages.version>0.1.2</mypages.version>
 </properties>
 
 <dependency>
@@ -22,7 +22,7 @@ Please make sure that Java version is 1.8 and above.
 ## Gradle Dependency
 
 ```xml
-implementation 'io.leego:mypages:0.1.1'
+implementation 'io.leego:mypages:0.1.2'
 ```
 
 

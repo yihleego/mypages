@@ -18,7 +18,6 @@ public class PaginationUnrefinedParam implements Serializable {
     private Method offsetReadMethod;
     private Method rowsReadMethod;
     private Method countColumnReadMethod;
-    private String defaultCountColumn;
     private boolean mapType;
 
     public PaginationUnrefinedParam() {
@@ -33,7 +32,7 @@ public class PaginationUnrefinedParam implements Serializable {
         this.countColumn = countColumn;
     }
 
-    public PaginationUnrefinedParam(boolean reasonable, int defaultPage, int defaultSize, int maxPage, int maxSize, String countColumn, Method pageReadMethod, Method sizeReadMethod, Method offsetReadMethod, Method rowsReadMethod, Method countColumnReadMethod, String defaultCountColumn, boolean mapType) {
+    public PaginationUnrefinedParam(boolean reasonable, int defaultPage, int defaultSize, int maxPage, int maxSize, String countColumn, Method pageReadMethod, Method sizeReadMethod, Method offsetReadMethod, Method rowsReadMethod, Method countColumnReadMethod, boolean mapType) {
         this.reasonable = reasonable;
         this.defaultPage = defaultPage;
         this.defaultSize = defaultSize;
@@ -45,7 +44,6 @@ public class PaginationUnrefinedParam implements Serializable {
         this.offsetReadMethod = offsetReadMethod;
         this.rowsReadMethod = rowsReadMethod;
         this.countColumnReadMethod = countColumnReadMethod;
-        this.defaultCountColumn = defaultCountColumn;
         this.mapType = mapType;
     }
 
@@ -135,14 +133,6 @@ public class PaginationUnrefinedParam implements Serializable {
 
     public void setCountColumnReadMethod(Method countColumnReadMethod) {
         this.countColumnReadMethod = countColumnReadMethod;
-    }
-
-    public String getDefaultCountColumn() {
-        return defaultCountColumn;
-    }
-
-    public void setDefaultCountColumn(String defaultCountColumn) {
-        this.defaultCountColumn = defaultCountColumn;
     }
 
     public boolean isMapType() {

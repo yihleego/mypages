@@ -56,7 +56,7 @@ import java.util.concurrent.ConcurrentMap;
         @Signature(type = Executor.class, method = "query", args = {MappedStatement.class, Object.class, RowBounds.class, ResultHandler.class}),
         @Signature(type = Executor.class, method = "query", args = {MappedStatement.class, Object.class, RowBounds.class, ResultHandler.class, CacheKey.class, BoundSql.class})})
 public class PaginationInterceptor implements Interceptor {
-    private static final String COUNT_SUFFIX = "_COUNT";
+    private static final String COUNT_SUFFIX = "#COUNT";
     /** Default page (optional) */
     private int defaultPage = 1;
     /** Default size (optional) */
@@ -264,14 +264,14 @@ public class PaginationInterceptor implements Interceptor {
      * @return {@link PaginationParam}
      */
     private PaginationParam analyseParameter(Object parameter) {
-        PaginationUnrefinedParam paginationUnrefinedParam = unrefinedParamMap.computeIfAbsent(
+        PaginationUnrefinedParam unrefinedParam = unrefinedParamMap.computeIfAbsent(
                 parameter.getClass().getName(), className -> buildPaginationUnrefinedParam(parameter));
-        int defaultPage = paginationUnrefinedParam.getDefaultPage();
-        int defaultSize = paginationUnrefinedParam.getDefaultSize();
-        int maxPage = paginationUnrefinedParam.getMaxPage();
-        int maxSize = paginationUnrefinedParam.getMaxSize();
-        boolean reasonable = paginationUnrefinedParam.isReasonable();
-        String countColumn = paginationUnrefinedParam.getCountColumn();
+        int defaultPage = unrefinedParam.getDefaultPage();
+        int defaultSize = unrefinedParam.getDefaultSize();
+        int maxPage = unrefinedParam.getMaxPage();
+        int maxSize = unrefinedParam.getMaxSize();
+        boolean reasonable = unrefinedParam.isReasonable();
+        String countColumn;
         Integer page;
         Integer size;
         Integer offset;
@@ -282,33 +282,24 @@ public class PaginationInterceptor implements Interceptor {
             size = search.getSize();
             offset = search.getOffset();
             rows = search.getRows();
-            if (StringUtils.isNotEmpty(search.getCountColumn())) {
-                countColumn = search.getCountColumn();
-            }
+            countColumn = search.getCountColumn();
+        } else if (unrefinedParam.isMapType()) {
+            Map parameterMap = (Map) parameter;
+            page = parseInteger(getMapValue(parameterMap, this.pageFieldName));
+            size = parseInteger(getMapValue(parameterMap, this.sizeFieldName));
+            offset = parseInteger(getMapValue(parameterMap, this.offsetFieldName));
+            rows = parseInteger(getMapValue(parameterMap, this.rowsFieldName));
+            countColumn = parseString(getMapValue(parameterMap, this.countColumnFieldName));
         } else {
-            if (paginationUnrefinedParam.isMapType()) {
-                Map parameterMap = (Map) parameter;
-                page = parseInteger(getMapValue(parameterMap, this.pageFieldName));
-                size = parseInteger(getMapValue(parameterMap, this.sizeFieldName));
-                offset = parseInteger(getMapValue(parameterMap, this.offsetFieldName));
-                rows = parseInteger(getMapValue(parameterMap, this.rowsFieldName));
-                Object countColumnValue = getMapValue(parameterMap, this.countColumnFieldName);
-                if (countColumnValue instanceof String
-                        && StringUtils.isNotEmpty((String) countColumnValue)) {
-                    countColumn = (String) countColumnValue;
-                }
-            } else {
-                page = invokeInteger(parameter, paginationUnrefinedParam.getPageReadMethod());
-                size = invokeInteger(parameter, paginationUnrefinedParam.getSizeReadMethod());
-                offset = invokeInteger(parameter, paginationUnrefinedParam.getOffsetReadMethod());
-                rows = invokeInteger(parameter, paginationUnrefinedParam.getRowsReadMethod());
-                String countColumnValue = invokeString(parameter, paginationUnrefinedParam.getCountColumnReadMethod());
-                if (StringUtils.isNotEmpty(countColumnValue)) {
-                    countColumn = countColumnValue;
-                } else if (StringUtils.isNotEmpty(paginationUnrefinedParam.getDefaultCountColumn())) {
-                    countColumn = paginationUnrefinedParam.getDefaultCountColumn();
-                }
-            }
+            page = invokeInteger(parameter, unrefinedParam.getPageReadMethod());
+            size = invokeInteger(parameter, unrefinedParam.getSizeReadMethod());
+            offset = invokeInteger(parameter, unrefinedParam.getOffsetReadMethod());
+            rows = invokeInteger(parameter, unrefinedParam.getRowsReadMethod());
+            countColumn = invokeString(parameter, unrefinedParam.getCountColumnReadMethod());
+        }
+        if (StringUtils.isEmpty(countColumn)
+                && StringUtils.isNotEmpty(unrefinedParam.getCountColumn())) {
+            countColumn = unrefinedParam.getCountColumn();
         }
         boolean usePageSize = page != null && size != null;
         boolean useOffsetRows = offset != null && rows != null;
@@ -375,7 +366,6 @@ public class PaginationInterceptor implements Interceptor {
         Method offsetReadMethod = null;
         Method rowsReadMethod = null;
         Method countColumnReadMethod = null;
-        String defaultCountColumn = null;
         boolean mapType;
         Pagination pagination = ReflectUtils.getAnnotation(parameter, Pagination.class);
         if (pagination != null) {
@@ -447,10 +437,6 @@ public class PaginationInterceptor implements Interceptor {
                             rowsReadMethod = BeanUtils.getReadMethod(field);
                         } else if (annotation instanceof CountColumn) {
                             countColumnReadMethod = BeanUtils.getReadMethod(field);
-                            String defaultValue = ((CountColumn) annotation).defaultValue();
-                            if (StringUtils.isNotEmpty(defaultValue)) {
-                                defaultCountColumn = defaultValue;
-                            }
                         }
                     } catch (IntrospectionException ignored) {
                     }
@@ -477,10 +463,6 @@ public class PaginationInterceptor implements Interceptor {
                         rowsReadMethod = method;
                     } else if (annotation instanceof CountColumn) {
                         countColumnReadMethod = method;
-                        String defaultValue = ((CountColumn) annotation).defaultValue();
-                        if (StringUtils.isNotEmpty(defaultValue)) {
-                            defaultCountColumn = defaultValue;
-                        }
                     }
                 }
             }
@@ -502,7 +484,6 @@ public class PaginationInterceptor implements Interceptor {
                 offsetReadMethod,
                 rowsReadMethod,
                 countColumnReadMethod,
-                defaultCountColumn,
                 mapType);
     }
 
@@ -570,7 +551,39 @@ public class PaginationInterceptor implements Interceptor {
     }
 
     /**
-     * Parses the string argument as a signed decimal integer.
+     * Parses the object argument as a string.
+     */
+    private String parseString(Object value) {
+        if (value == null) {
+            return null;
+        }
+        if (value instanceof String) {
+            return (String) value;
+        }
+        return String.valueOf(value);
+    }
+
+    /**
+     * Parses the object argument as a boolean.
+     */
+    private Boolean parseBoolean(Object value, Boolean defaultValue) {
+        if (value == null) {
+            return defaultValue;
+        }
+        if (value instanceof Boolean) {
+            return (boolean) value;
+        } else if (value instanceof Number) {
+            // Returns false if the value equals 0.
+            return ((Number) value).intValue() != 0;
+        } else if (value instanceof String) {
+            // Returns true if the text equals "true" (ignore case).
+            return Boolean.parseBoolean((String) value);
+        }
+        return defaultValue;
+    }
+
+    /**
+     * Parses the object argument as a signed decimal integer.
      */
     private Integer parseInteger(Object value) {
         if (value == null) {
@@ -624,25 +637,6 @@ public class PaginationInterceptor implements Interceptor {
             result -= digit;
         }
         return true;
-    }
-
-    /**
-     * Parses the string argument as a boolean.
-     */
-    private Boolean parseBoolean(Object value, Boolean defaultValue) {
-        if (value == null) {
-            return defaultValue;
-        }
-        if (value instanceof Boolean) {
-            return (boolean) value;
-        } else if (value instanceof Number) {
-            // Returns false if the value equals 0.
-            return ((Number) value).intValue() != 0;
-        } else if (value instanceof String) {
-            // Returns true if the text equals "true" (ignore case).
-            return Boolean.parseBoolean((String) value);
-        }
-        return defaultValue;
     }
 
 

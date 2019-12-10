@@ -33,7 +33,7 @@ public abstract class AbstractDialect implements Dialect {
     @Override
     public String getCountSql(String sql, String column) {
         if (column == null || column.isEmpty()) {
-            column = ASTERISK;
+            return getCountSql(sql);
         }
         return "SELECT COUNT(" + column + ") FROM (" + sql + ") MP_TCT";
     }
