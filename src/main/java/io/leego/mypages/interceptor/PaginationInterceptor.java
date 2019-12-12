@@ -151,7 +151,7 @@ public class PaginationInterceptor implements Interceptor {
         String countSql = dialect.getCountSql(originSql, countColumn);
         BoundSql countBoundSql = newBoundSql(ms, boundSql, countSql);
         Object result = executor.query(countMs, parameter, RowBounds.DEFAULT, resultHandler, countKey, countBoundSql);
-        return result != null ? (Long) ((List) result).get(0) : 0;
+        return result != null ? parseLong(((List) result).get(0)) : 0;
     }
 
     /**
@@ -251,8 +251,8 @@ public class PaginationInterceptor implements Interceptor {
             return true;
         }
         try {
-            Object value = BeanUtils.read(parameter, enableCountFieldName);
-            return parseBoolean(value, false);
+            Boolean value = parseBoolean(BeanUtils.read(parameter, enableCountFieldName));
+            return value != null ? value : false;
         } catch (Exception e) {
             return false;
         }
@@ -566,9 +566,9 @@ public class PaginationInterceptor implements Interceptor {
     /**
      * Parses the object argument as a boolean.
      */
-    private Boolean parseBoolean(Object value, Boolean defaultValue) {
+    private Boolean parseBoolean(Object value) {
         if (value == null) {
-            return defaultValue;
+            return null;
         }
         if (value instanceof Boolean) {
             return (boolean) value;
@@ -579,7 +579,7 @@ public class PaginationInterceptor implements Interceptor {
             // Returns true if the text equals "true" (ignore case).
             return Boolean.parseBoolean((String) value);
         }
-        return defaultValue;
+        return null;
     }
 
     /**
@@ -591,52 +591,33 @@ public class PaginationInterceptor implements Interceptor {
         }
         if (value instanceof Number) {
             return ((Number) value).intValue();
-        } else if (value instanceof String && isInteger((String) value)) {
-            return Integer.parseInt((String) value);
+        } else if (value instanceof String) {
+            try {
+                return Integer.parseInt((String) value);
+            } catch (NumberFormatException e) {
+                return null;
+            }
         }
         return null;
     }
 
     /**
-     * Returns <code>true</code> if the string is a signed decimal integer.
+     * Parses the object argument as a signed decimal long.
      */
-    private boolean isInteger(String text) {
-        if (text == null || text.length() == 0) {
-            return false;
+    private Long parseLong(Object value) {
+        if (value == null) {
+            return null;
         }
-        int i = 0;
-        int len = text.length();
-        int limit = -Integer.MAX_VALUE;
-        int radix = 10;
-        char firstChar = text.charAt(0);
-        // Possible leading "+" or "-"
-        if (firstChar < '0') {
-            if (firstChar == '-') {
-                limit = Integer.MIN_VALUE;
-            } else if (firstChar != '+') {
-                return false;
+        if (value instanceof Number) {
+            return ((Number) value).longValue();
+        } else if (value instanceof String) {
+            try {
+                return Long.parseLong((String) value);
+            } catch (NumberFormatException e) {
+                return null;
             }
-            if (len == 1) {
-                // Cannot have lone "+" or "-"
-                return false;
-            }
-            i++;
         }
-        int multmin = limit / radix;
-        int result = 0;
-        while (i < len) {
-            // Accumulating negatively avoids surprises near MAX_VALUE
-            int digit = Character.digit(text.charAt(i++), radix);
-            if (digit < 0 || result < multmin) {
-                return false;
-            }
-            result *= radix;
-            if (result < limit + digit) {
-                return false;
-            }
-            result -= digit;
-        }
-        return true;
+        return null;
     }
 
 
