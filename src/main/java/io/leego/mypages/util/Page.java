@@ -39,6 +39,12 @@ public class Page<T> implements Serializable {
         this.previous = previous;
     }
 
+    public Page(List<T> list, Integer page, Integer size) {
+        this.list = list;
+        this.page = page;
+        this.size = size;
+    }
+
     public Page(List<T> list, Long total) {
         this.list = list;
         this.total = total;
@@ -55,15 +61,28 @@ public class Page<T> implements Serializable {
 
     public static <T> Page<T> of(List<T> list, Integer page, Integer size, Long total) {
         if (page == null || size == null) {
-            return of(list, total);
+            return new Page<>(list, total);
         }
-        boolean next = page * size < total;
-        boolean previous = page > 1;
-        long totalPages = 0L;
-        if (size > 0) {
+        if (total == null) {
+            return new Page<>(list, page, size);
+        }
+        boolean next;
+        boolean previous;
+        long totalPages;
+        if (page > 0 && size > 0) {
+            next = page * size < total;
+            previous = page != 1;
             totalPages = total % size > 0 ? total / size + 1 : total / size;
+        } else {
+            next = false;
+            previous = false;
+            totalPages = 0L;
         }
         return new Page<>(list, page, size, total, totalPages, next, previous);
+    }
+
+    public static <T> Page<T> of(List<T> list, Integer page, Integer size) {
+        return new Page<>(list, page, size);
     }
 
     public static <T> Page<T> of(List<T> list, Long total) {

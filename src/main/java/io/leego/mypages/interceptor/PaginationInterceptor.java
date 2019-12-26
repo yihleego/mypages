@@ -439,6 +439,7 @@ public class PaginationInterceptor implements Interceptor {
                             countColumnReadMethod = BeanUtils.getReadMethod(field);
                         }
                     } catch (IntrospectionException ignored) {
+                        // ignored
                     }
                 }
             }
@@ -571,7 +572,7 @@ public class PaginationInterceptor implements Interceptor {
             return null;
         }
         if (value instanceof Boolean) {
-            return (boolean) value;
+            return (Boolean) value;
         } else if (value instanceof Number) {
             // Returns false if the value equals 0.
             return ((Number) value).intValue() != 0;

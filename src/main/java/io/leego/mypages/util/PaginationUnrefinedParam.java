@@ -1,12 +1,11 @@
 package io.leego.mypages.util;
 
-import java.io.Serializable;
 import java.lang.reflect.Method;
 
 /**
  * @author Yihleego
  */
-public class PaginationUnrefinedParam implements Serializable {
+public class PaginationUnrefinedParam {
     private boolean reasonable;
     private int defaultPage;
     private int defaultSize;

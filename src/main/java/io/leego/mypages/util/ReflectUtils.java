@@ -20,6 +20,7 @@ public final class ReflectUtils {
         try {
             return o.getClass().getDeclaredField(fieldName);
         } catch (NoSuchFieldException ignored) {
+            // ignored
         }
         return null;
     }
@@ -28,6 +29,7 @@ public final class ReflectUtils {
         try {
             return clazz.getDeclaredField(fieldName);
         } catch (NoSuchFieldException ignored) {
+            // ignored
         }
         return null;
     }
@@ -120,6 +122,7 @@ public final class ReflectUtils {
         try {
             return clazz.getDeclaredMethod(methodName);
         } catch (NoSuchMethodException ignored) {
+            // ignored
         }
         return null;
     }
@@ -128,6 +131,7 @@ public final class ReflectUtils {
         try {
             return clazz.getDeclaredMethod(methodName, parameterTypes);
         } catch (NoSuchMethodException ignored) {
+            // ignored
         }
         return null;
     }

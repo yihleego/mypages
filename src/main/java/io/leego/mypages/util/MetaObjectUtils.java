@@ -4,13 +4,14 @@ import io.leego.mypages.exception.PaginationException;
 import org.apache.ibatis.reflection.MetaObject;
 
 import java.lang.reflect.Method;
+import java.util.Arrays;
 
 /**
  * @author Yihleego
  */
 public class MetaObjectUtils {
     private static Method method;
-    private final static String[] classNames = {
+    private static final String[] classNames = {
             "org.apache.ibatis.reflection.SystemMetaObject",
             "org.apache.ibatis.reflection.MetaObject",
     };
@@ -29,10 +30,11 @@ public class MetaObjectUtils {
                     break;
                 }
             } catch (Exception ignored) {
+                // ignored
             }
         }
         if (method == null) {
-            throw new PaginationException("The class '" + classNames + "' cannot be located");
+            throw new PaginationException("The class '" + Arrays.toString(classNames) + "' cannot be located");
         }
     }
 

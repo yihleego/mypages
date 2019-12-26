@@ -17,7 +17,9 @@ import java.util.TreeSet;
 /**
  * @author Yihleego
  */
-public class PaginationCollectionFactory {
+public final class PaginationCollectionFactory {
+    private PaginationCollectionFactory() {
+    }
 
     public static Collection<?> build(Class<?> returnType, Object result, Long total, Integer page, Integer size) {
         if (result == null) {
