@@ -8,15 +8,15 @@ import io.leego.mypages.util.PaginationParam;
 public class DerbyDialect extends AbstractDialect {
 
     @Override
-    public String getPaginationSql(String sql) {
+    public String getPagingSql(String sql) {
         return sql + " OFFSET ? ROWS FETCH NEXT ? ROWS ONLY";
     }
 
     @Override
-    public Object[] getPaginationParam(PaginationParam paginationParam) {
+    public Object[] getPagingParams(PaginationParam param) {
         return new Object[]{
-                paginationParam.getOffset(),
-                paginationParam.getRows()};
+                param.getOffset(),
+                param.getRows()};
     }
 
 }

@@ -57,40 +57,56 @@ import java.util.concurrent.ConcurrentMap;
         @Signature(type = Executor.class, method = "query", args = {MappedStatement.class, Object.class, RowBounds.class, ResultHandler.class, CacheKey.class, BoundSql.class})})
 public class PaginationInterceptor implements Interceptor {
     private static final String COUNT_SUFFIX = "#COUNT";
-    /** Default page (optional) */
-    private int defaultPage = 1;
-    /** Default size (optional) */
-    private int defaultSize = 10;
-    /** Max page (optional) */
-    private int maxPage = -1;
-    /** Max size (optional) */
-    private int maxSize = -1;
-    /** Count column (optional) */
-    private String countColumn;
-    /** Parameter page field name (optional) */
-    private String pageFieldName;
-    /** Parameter size field name (optional) */
-    private String sizeFieldName;
-    /** Parameter offset field name (optional) */
-    private String offsetFieldName;
-    /** Parameter rows field name (optional) */
-    private String rowsFieldName;
-    /** Parameter count column field name (optional) */
-    private String countColumnFieldName;
-    /** Parameter enable count field name (optional) */
-    private String enableCountFieldName;
-    /** Whether to reflect <code>page, size, offset, rows</code> from parameter (optional) */
-    private boolean autoGetParamsFromFields = false;
-    /** Whether to skip query if total value equals zero (optional) */
-    private boolean skipQueryIfCountEqualsZero = true;
-    /** Whether to enable reasonable (optional) */
-    private boolean reasonable = false;
-    /** {@link SqlDialect} (optional) */
+    /**
+     * The specified SQL dialect,
+     * this value can be null if the {@link #dialect} is specified.
+     */
     private SqlDialect sqlDialect;
-    /** The SQL dialect {@link Dialect} (required) */
+    /**
+     * Object that extends {@link io.leego.mypages.dialect.Dialect},
+     * this value cannot be null.
+     */
     private Dialect dialect;
+    /** Counting column name, the default value is <code>"*"</code>. */
+    private String countColumn;
+    /** Parameter page field name. */
+    private String pageFieldName;
+    /** Parameter size field name. */
+    private String sizeFieldName;
+    /** Parameter offset field name. */
+    private String offsetFieldName;
+    /** Parameter rows field name. */
+    private String rowsFieldName;
+    /** Parameter count column field name. */
+    private String countColumnFieldName;
+    /** Parameter enable count field name. */
+    private String enableCountFieldName;
+    /** Whether to obtain <code>page</code>, <code>size</code>, <code>offset</code>, <code>rows</code> values from fields of parameter. */
+    private boolean obtainParamsFromFields = false;
+    /** Whether to skip query if total value equals zero. */
+    private boolean skipQueryIfCountEqualsZero = true;
+    /** Whether to enable reasonable. */
+    private boolean reasonable = false;
+    /** Replaces <code>page</code> with <code>defaultPage</code> if <code>page</code> is invalid. */
+    private int defaultPage = 1;
+    /** Replaces <code>size</code> with <code>defaultSize</code> if <code>size</code> is invalid. */
+    private int defaultSize = 10;
+    /** Replaces <code>page</code> with <code>maxPage</code> if <code>page</code> is invalid. */
+    private int maxPage = -1;
+    /** Replaces <code>size</code> with <code>maxSize</code> if <code>size</code> is invalid. */
+    private int maxSize = -1;
+
     private ConcurrentMap<String, MappedStatement> countMsMap = new ConcurrentHashMap<>(64);
     private ConcurrentMap<String, PaginationUnrefinedParam> unrefinedParamMap = new ConcurrentHashMap<>(64);
+
+    public PaginationInterceptor() {
+    }
+
+    public PaginationInterceptor(SqlDialect sqlDialect) {
+        Objects.requireNonNull(sqlDialect);
+        this.sqlDialect = sqlDialect;
+        this.dialect = sqlDialect.getDialect();
+    }
 
     @Override
     public Object intercept(Invocation invocation) throws Throwable {
@@ -138,6 +154,7 @@ public class PaginationInterceptor implements Interceptor {
 
     @Override
     public void setProperties(Properties properties) {
+        // ignored
     }
 
     /**
@@ -157,10 +174,10 @@ public class PaginationInterceptor implements Interceptor {
     /**
      * Returns paging query results
      */
-    private <E> List<E> query(Executor executor, MappedStatement ms, BoundSql boundSql, Object parameter, ResultHandler resultHandler, CacheKey cacheKey, PaginationParam param) throws SQLException {
+    private <E> List<E> query(Executor executor, MappedStatement ms, BoundSql boundSql, Object parameter, ResultHandler resultHandler, CacheKey cacheKey, PaginationParam param) throws Exception {
         parameter = dialect.processParams(ms, parameter, boundSql, cacheKey, param);
         String originSql = boundSql.getSql();
-        String paginationSql = dialect.getPaginationSql(originSql, param.getOffset(), param.getRows());
+        String paginationSql = dialect.getPagingSql(originSql, param);
         BoundSql paginationBoundSql = newBoundSql(ms, boundSql, paginationSql);
         return executor.query(ms, parameter, RowBounds.DEFAULT, resultHandler, cacheKey, paginationBoundSql);
     }
@@ -221,7 +238,7 @@ public class PaginationInterceptor implements Interceptor {
      * Returns <code>true</code> when following:<p>
      * 1.<code>returnType</code> is assignable from {@link Collection}.<p>
      * 2.Annotation {@link DisablePagination} is absent.<p>
-     * 3.{@link #autoGetParamsFromFields} equals <code>true</code> or
+     * 3.{@link #obtainParamsFromFields} equals <code>true</code> or
      * <code>parameter</code> extends {@link Search},
      * Annotation {@link Pagination} is present.
      * @param parameter  The parameter
@@ -233,7 +250,7 @@ public class PaginationInterceptor implements Interceptor {
                 || parameter.getClass().getAnnotation(DisablePagination.class) != null) {
             return false;
         }
-        return autoGetParamsFromFields
+        return obtainParamsFromFields
                 || parameter instanceof Search
                 || parameter.getClass().getAnnotation(Pagination.class) != null;
     }
@@ -392,7 +409,7 @@ public class PaginationInterceptor implements Interceptor {
                     maxSize,
                     countColumn);
         }
-        if (this.autoGetParamsFromFields) {
+        if (this.obtainParamsFromFields) {
             PropertyDescriptor[] pds;
             try {
                 pds = BeanUtils.getPropertyDescriptors(parameter.getClass());
@@ -470,7 +487,7 @@ public class PaginationInterceptor implements Interceptor {
         }
         // There may be a map object or an object that implements Map
         mapType = parameter instanceof Map
-                && this.autoGetParamsFromFields
+                && this.obtainParamsFromFields
                 && (pageReadMethod == null || sizeReadMethod == null)
                 && (offsetReadMethod == null || rowsReadMethod == null);
         return new PaginationUnrefinedParam(
@@ -622,23 +639,16 @@ public class PaginationInterceptor implements Interceptor {
     }
 
 
-    public PaginationInterceptor defaultPage(int defaultPage) {
-        this.defaultPage = defaultPage;
+    public PaginationInterceptor sqlDialect(SqlDialect sqlDialect) {
+        Objects.requireNonNull(sqlDialect);
+        this.sqlDialect = sqlDialect;
+        this.dialect = sqlDialect.getDialect();
         return this;
     }
 
-    public PaginationInterceptor defaultSize(int defaultSize) {
-        this.defaultSize = defaultSize;
-        return this;
-    }
-
-    public PaginationInterceptor maxPage(int maxPage) {
-        this.maxPage = maxPage;
-        return this;
-    }
-
-    public PaginationInterceptor maxSize(int maxSize) {
-        this.maxSize = maxSize;
+    public PaginationInterceptor dialect(Dialect dialect) {
+        Objects.requireNonNull(dialect);
+        this.dialect = dialect;
         return this;
     }
 
@@ -652,7 +662,7 @@ public class PaginationInterceptor implements Interceptor {
         Objects.requireNonNull(sizeFieldName);
         this.pageFieldName = pageFieldName;
         this.sizeFieldName = sizeFieldName;
-        this.autoGetParamsFromFields = true;
+        this.obtainParamsFromFields = true;
         return this;
     }
 
@@ -661,7 +671,7 @@ public class PaginationInterceptor implements Interceptor {
         Objects.requireNonNull(rowsFieldName);
         this.offsetFieldName = offsetFieldName;
         this.rowsFieldName = rowsFieldName;
-        this.autoGetParamsFromFields = true;
+        this.obtainParamsFromFields = true;
         return this;
     }
 
@@ -685,34 +695,34 @@ public class PaginationInterceptor implements Interceptor {
         return this;
     }
 
-    public PaginationInterceptor sqlDialect(SqlDialect sqlDialect) {
-        Objects.requireNonNull(sqlDialect);
+    public PaginationInterceptor defaultPage(int defaultPage) {
+        this.defaultPage = defaultPage;
+        return this;
+    }
+
+    public PaginationInterceptor defaultSize(int defaultSize) {
+        this.defaultSize = defaultSize;
+        return this;
+    }
+
+    public PaginationInterceptor maxPage(int maxPage) {
+        this.maxPage = maxPage;
+        return this;
+    }
+
+    public PaginationInterceptor maxSize(int maxSize) {
+        this.maxSize = maxSize;
+        return this;
+    }
+
+
+    public void setSqlDialect(SqlDialect sqlDialect) {
         this.sqlDialect = sqlDialect;
         this.dialect = sqlDialect.getDialect();
-        return this;
     }
 
-    public PaginationInterceptor dialect(Dialect dialect) {
-        Objects.requireNonNull(dialect);
+    public void setDialect(Dialect dialect) {
         this.dialect = dialect;
-        return this;
-    }
-
-
-    public void setDefaultPage(int defaultPage) {
-        this.defaultPage = defaultPage;
-    }
-
-    public void setDefaultSize(int defaultSize) {
-        this.defaultSize = defaultSize;
-    }
-
-    public void setMaxPage(int maxPage) {
-        this.maxPage = maxPage;
-    }
-
-    public void setMaxSize(int maxSize) {
-        this.maxSize = maxSize;
     }
 
     public void setCountColumn(String countColumn) {
@@ -743,6 +753,10 @@ public class PaginationInterceptor implements Interceptor {
         this.enableCountFieldName = enableCountFieldName;
     }
 
+    public void setObtainParamsFromFields(boolean obtainParamsFromFields) {
+        this.obtainParamsFromFields = obtainParamsFromFields;
+    }
+
     public void setSkipQueryIfCountEqualsZero(boolean skipQueryIfCountEqualsZero) {
         this.skipQueryIfCountEqualsZero = skipQueryIfCountEqualsZero;
     }
@@ -751,30 +765,29 @@ public class PaginationInterceptor implements Interceptor {
         this.reasonable = reasonable;
     }
 
-    public void setSqlDialect(SqlDialect sqlDialect) {
-        this.sqlDialect = sqlDialect;
-        this.dialect = sqlDialect.getDialect();
+    public void setDefaultPage(int defaultPage) {
+        this.defaultPage = defaultPage;
     }
 
-    public void setDialect(Dialect dialect) {
-        this.dialect = dialect;
+    public void setDefaultSize(int defaultSize) {
+        this.defaultSize = defaultSize;
+    }
+
+    public void setMaxPage(int maxPage) {
+        this.maxPage = maxPage;
+    }
+
+    public void setMaxSize(int maxSize) {
+        this.maxSize = maxSize;
     }
 
 
-    public int getDefaultPage() {
-        return defaultPage;
+    public SqlDialect getSqlDialect() {
+        return sqlDialect;
     }
 
-    public int getDefaultSize() {
-        return defaultSize;
-    }
-
-    public int getMaxPage() {
-        return maxPage;
-    }
-
-    public int getMaxSize() {
-        return maxSize;
+    public Dialect getDialect() {
+        return dialect;
     }
 
     public String getCountColumn() {
@@ -805,6 +818,10 @@ public class PaginationInterceptor implements Interceptor {
         return enableCountFieldName;
     }
 
+    public boolean isObtainParamsFromFields() {
+        return obtainParamsFromFields;
+    }
+
     public boolean isSkipQueryIfCountEqualsZero() {
         return skipQueryIfCountEqualsZero;
     }
@@ -813,8 +830,20 @@ public class PaginationInterceptor implements Interceptor {
         return reasonable;
     }
 
-    public SqlDialect getSqlDialect() {
-        return sqlDialect;
+    public int getDefaultPage() {
+        return defaultPage;
+    }
+
+    public int getDefaultSize() {
+        return defaultSize;
+    }
+
+    public int getMaxPage() {
+        return maxPage;
+    }
+
+    public int getMaxSize() {
+        return maxSize;
     }
 
 }

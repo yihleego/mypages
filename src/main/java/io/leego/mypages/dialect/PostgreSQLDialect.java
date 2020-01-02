@@ -8,15 +8,15 @@ import io.leego.mypages.util.PaginationParam;
 public class PostgreSQLDialect extends AbstractDialect {
 
     @Override
-    public String getPaginationSql(String sql) {
+    public String getPagingSql(String sql) {
         return sql + " LIMIT ? OFFSET ?";
     }
 
     @Override
-    public Object[] getPaginationParam(PaginationParam paginationParam) {
+    public Object[] getPagingParams(PaginationParam param) {
         return new Object[]{
-                paginationParam.getRows(),
-                paginationParam.getOffset()};
+                param.getRows(),
+                param.getOffset()};
     }
 
 }

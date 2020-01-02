@@ -7,6 +7,9 @@ import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.function.Supplier;
 
 /**
  * @author Yihleego
@@ -162,7 +165,7 @@ public final class BeanUtils {
 
 
     /**
-     * Returns value of the object field.
+     * Returns value of the field of the object.
      * @param o         Target bean
      * @param fieldName The name of the property
      * @return value
@@ -182,7 +185,7 @@ public final class BeanUtils {
     }
 
     /**
-     * Returns value of the object field.
+     * Returns value of the field of the object.
      * @param o     Target bean
      * @param field {@link Field}
      * @return value
@@ -217,7 +220,7 @@ public final class BeanUtils {
     }
 
     /**
-     * Returns value of the object field.
+     * Returns value of the field of the object.
      * @param o          Target bean
      * @param fieldName  The name of the property
      * @param returnType The return type
@@ -235,7 +238,7 @@ public final class BeanUtils {
     }
 
     /**
-     * Returns value of the object field.
+     * Returns value of the field of the object.
      * @param o          Target bean
      * @param field      {@link Field}
      * @param returnType The return type
@@ -267,6 +270,41 @@ public final class BeanUtils {
             return returnType.cast(value);
         }
         return null;
+    }
+
+    /**
+     * Returns values of all fields of the object.
+     * @param o Target bean
+     * @return values
+     * @throws IntrospectionException    if an exception occurs during introspection.
+     * @throws IllegalAccessException    if the method is not accessible.
+     * @throws InvocationTargetException if the underlying method  throws an exception.
+     */
+    public static Map<Object, Object> readAll(Object o) throws IntrospectionException, IllegalAccessException, InvocationTargetException {
+        PropertyDescriptor[] descriptors = getPropertyDescriptors(o.getClass());
+        Map<Object, Object> map = new HashMap<>();
+        for (PropertyDescriptor descriptor : descriptors) {
+            map.put(descriptor.getName(), read(o, descriptor.getReadMethod()));
+        }
+        return map;
+    }
+
+    /**
+     * Returns values of all fields of the object.
+     * @param o          Target bean
+     * @param mapFactory The map factory
+     * @return values
+     * @throws IntrospectionException    if an exception occurs during introspection.
+     * @throws IllegalAccessException    if the method is not accessible.
+     * @throws InvocationTargetException if the underlying method  throws an exception.
+     */
+    public static <M extends Map<Object, Object>> M readAll(Object o, Supplier<M> mapFactory) throws IllegalAccessException, InvocationTargetException, IntrospectionException {
+        PropertyDescriptor[] descriptors = getPropertyDescriptors(o.getClass());
+        M map = mapFactory.get();
+        for (PropertyDescriptor descriptor : descriptors) {
+            map.put(descriptor.getName(), read(o, descriptor.getReadMethod()));
+        }
+        return map;
     }
 
     /**

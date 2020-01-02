@@ -2,14 +2,13 @@
 
 Please make sure that Java version is 1.8 and above.
 
-
 # Installation
 
 ## Maven Dependency
 
 ```xml
 <properties>
-    <mypages.version>0.1.2</mypages.version>
+    <mypages.version>0.2.0</mypages.version>
 </properties>
 
 <dependency>
@@ -22,9 +21,8 @@ Please make sure that Java version is 1.8 and above.
 ## Gradle Dependency
 
 ```xml
-implementation 'io.leego:mypages:0.1.2'
+implementation 'io.leego:mypages:0.2.0'
 ```
-
 
 # Quick Setup
 
@@ -38,17 +36,11 @@ In MyBatis-Spring, an SqlSessionFactoryBean is used to create an SqlSessionFacto
 <bean id="sqlSessionFactoryBean" class="org.mybatis.spring.SqlSessionFactoryBean">
     <property name="dataSource" ref="dataSource"/>
     <property name="plugins">
+        <!-- Configures pagination plugin -->
         <bean class="io.leego.mypages.interceptor.PaginationInterceptor">
             <property name="sqlDialect" value="MYSQL"/>
-            <property name="pageFieldName" value="page"/>
-            <property name="sizeFieldName" value="size"/>
         </bean>
     </property>
-</bean>
-
-<bean id="mapperScannerConfigurer" class="org.mybatis.spring.mapper.MapperScannerConfigurer">
-    <property name="basePackage" value="com.example.mapper"/>
-    <property name="sqlSessionFactoryBeanName" value="sqlSessionFactoryBean"/>
 </bean>
 ```
 
@@ -72,9 +64,7 @@ public class MybatisConfig {
 
     @Bean
     public PaginationInterceptor interceptor() {
-        return new PaginationInterceptor()
-                .sqlDialect(SqlDialect.POSTGRESQL)
-                .pagingFields("page", "size");
+        return new PaginationInterceptor(SqlDialect.MYSQL);
     }
 }
 ```
@@ -84,58 +74,12 @@ Notice that the PaginationInterceptor requires SqlDialect. This can be any SqlDi
 Assume you have a search class defined like the following:
 
 ```java
-public class UserSearch {
-    private String name;
-    private Integer page;
-    private Integer size;
-    /* getter setter */
-}
-```
+import io.leego.mypages.annotation.Pagination;
+import io.leego.mypages.annotation.Page;
+import io.leego.mypages.annotation.Size;
 
-Assume you have a mapper interface defined like the following:
-
-```java
-public interface UserMapper {
-    @Select("SELECT * FROM user WHERE name LIKE CONCAT(#{name},'%')")
-    List<User> listUser(UserSearch search);
-}
-```
-
-Calling paging methods is now only a few lines of code:
-
-```java
-public class UserServiceImpl implements UserService {
-    @Autowired
-    private final UserMapper userMapper;
-
-    public Page<User> searchUser(UserSearch search) {
-        return Page.of(userMapper.listUser(search));
-    }
-}
-```
-
-
-# Enable Pagination
-
-## 1.Extends Search
-
-Defined a class extends ```io.leego.mypages.util.Search```
-
-```java
-public class SearchDTO extends io.leego.mypages.util.Search {
-    private String name;
-    /* getter setter */
-}
-```
-
-## 2.Annotations
-
-Using ```@Pagination```, ```@Page```, ```@Size```, ```@Offset```, ```@Rows```, ```@CountColumn``` annotations.
-
-```java
 @Pagination
 public class SearchDTO {
-    private String name;
     @Page
     private Integer page;
     @Size
@@ -144,12 +88,52 @@ public class SearchDTO {
 }
 ```
 
-Or
+Assume you have a mapper interface defined like the following:
+
+```java
+public interface FooMapper {
+    @Select("SELECT * FROM foo")
+    List<Foo> list(SearchDTO search);
+}
+```
+
+Calling paging methods is now only a few lines of code:
+
+```java
+import io.leego.mypages.util.Page;
+
+public class FooServiceImpl implements FooService {
+    @Autowired
+    private final FooMapper fooMapper;
+
+    public Page<Foo> search(SearchDTO search) {
+        return Page.of(fooMapper.list(search));
+    }
+}
+```
+
+# Enable Pagination
+
+## 1.Annotations (Recommended)
+
+Use ```@Pagination```, ```@Page```, ```@Size``` annotations.
 
 ```java
 @Pagination
 public class SearchDTO {
-    private String name;
+    @Page
+    private Integer page;
+    @Size
+    private Integer size;
+    /* getter setter */
+}
+```
+
+Or use ```@Pagination```, ```@Offset```, ```@Rows``` annotations.
+
+```java
+@Pagination
+public class SearchDTO {
     @Offset
     private Integer offset;
     @Rows
@@ -158,54 +142,86 @@ public class SearchDTO {
 }
 ```
 
-## 3.Get Parameters From Fields
+More annotations: ```@CountColumn```, ```@DisableCount```, ```@DisablePagination```.
 
-Defined a class with paging parameters, configure parameters field names.
+## 2.Configure PaginationInterceptor (Recommended)
+
+Define a class with paging parameters, and configure parameters field names.
 
 ```java
 public class SearchDTO {
-    private String name;
     private Integer page;
     private Integer size;
-    /* getter setter */
-}
-```
-
-```java
-new PaginationInterceptor()
-    .sqlDialect(SqlDialect.MYSQL)
-    .pagingFields("page","size");
-```
-
-Or
-
-```java
-public class SearchDTO {
-    private String name;
     private Integer offset;
     private Integer rows;
+    private String column;
+    private boolean allowCount;
     /* getter setter */
 }
 ```
 
 ```java
-new PaginationInterceptor()
+// Obtains page and size values from fields of parameter.
+PaginationInterceptor pagingPlugin = new PaginationInterceptor()
     .sqlDialect(SqlDialect.MYSQL)
-    .offsetRowsFields("offset","rows");
+    .pagingFields("page", "size");
 ```
 
+```java
+// Obtains offset and rows values from fields of parameter.
+PaginationInterceptor offsetRowsPlugin = new PaginationInterceptor()
+    .sqlDialect(SqlDialect.MYSQL)
+    .offsetRowsFields("offset", "rows");
+```
+
+Others: 
+
+```java
+PaginationInterceptor plugin = new PaginationInterceptor()
+    // SqlDialect
+    .sqlDialect(SqlDialect.MYSQL)
+    // Counting column name, the default value is "*".
+    .countColumn("*")
+    // The field name of counting column name.
+    .countColumnFieldName("column")
+    // whether to count by value of filed.
+    .enableCountFieldName("allowCount")
+    // Whether to skip query if total value equals zero.
+    .skipQueryIfCountEqualsZero(true)
+    // Whether to enable reasonable.
+    .reasonable(true)
+    // Replaces page with defaultPage if page is invalid.
+    .defaultPage(1)
+    // Replaces size with defaultSize if size is invalid.
+    .defaultSize(20)
+    // Replaces page with maxPage if page is invalid.
+    .maxPage(9999)
+    // Replaces size with maxSize if size is invalid.
+    .maxSize(1000);
+```
+
+## 3.Extends ```io.leego.mypages.util.Search```
+
+Define a class extends ```io.leego.mypages.util.Search```.
+
+```java
+public class SearchDTO extends io.leego.mypages.util.Search {
+    private String name;
+    /* getter setter */
+}
+```
 
 # Reasonable
 
 Rationalize parameters if reasonable is enabled, the following parameters can be set:
 
-**defaultPage**: Using default-page instead of page, if page number is null or less than 1, the default is 1.
+**defaultPage**: Replaces page with defaultPage, if page number is null or less than 1, the default is 1.
 
-**defaultSize**: Using default-size instead of size, if page size is null or less than 1, the default is 20.
+**defaultSize**: Replaces size with defaultSize, if page size is null or less than 1, the default is 10.
 
-**maxPage**: Using max-page instead of page, if page number is greater than this, the default is 10000.
+**maxPage**: Replaces page with defaultPage, if page number is greater than this.
 
-**maxSize**: Using max-size instead of size, if page size is greater than this, the default is 10000.
+**maxSize**: Replaces size with defaultSize, if page size is greater than this.
 
 
 These can be set up like the following:
@@ -227,54 +243,44 @@ new PaginationInterceptor()
     .maxSize(100);
 ```
 
-
 # Query Results
 
-If the paging query proceed, it will return an instance of the ```PaginationCollection```
+If the paging query proceed, it will return an instance of the ```PaginationCollection```.
 
 Assume you have a mapper interface defined like the following:
 
 ```java
-public interface UserMapper {
-    @Select("SELECT * FROM user WHERE name LIKE CONCAT(#{name},'%')")
-    List<User> listUser(UserSearch search);
+public interface FooMapper {
+    @Select("SELECT * FROM foo")
+    List<Foo> list(SearchDTO search);
 }
 ```
 
 ## 1.Ready-Made Wrapper Class
 
-Using inner paging query result wrapper class: ```io.leego.mypages.util.Page```
+Use paging query result wrapper class: ```io.leego.mypages.util.Page```.
 
 ```java
-List<User> list = userMapper.listUser(search);
-Page<User> result = Page.of(list);
+Page<Foo> result = Page.of(fooMapper.list(search));
 ```
 
 ```java
-List<User> list = userMapper.listUser(search);
-Page<UserDTO> result = Page.of(list, user -> new UserDTO(user.getId(), user.getName()));
+Page<Bar> result = Page.of(fooMapper.list(search), foo -> new Bar(foo.getName()));
 ```
 
-## 2.Custom Class & Util
+## 2.Custom Classes & Utils
 
 For example:
 
 ```java
 public class PageResult<T> implements Serializable {
     private static final long serialVersionUID = 3214571808482585491L;
-    /** list */
     protected List<T> list;
-    /** one-based page index */
     protected Integer page;
-    /** the size of the page to be returned */
     protected Integer size;
-    /** total quantity */
     protected Long total;
-    /** total pages */
     protected Long totalPages;
-    /** has next page */
     protected Boolean next;
-    /** has previous page */
     protected Boolean previous;
 
     public PageResult(List<T> list, Integer page, Integer size, Long total, Long totalPages, Boolean next, Boolean previous) {
@@ -285,6 +291,12 @@ public class PageResult<T> implements Serializable {
         this.totalPages = totalPages;
         this.next = next;
         this.previous = previous;
+    }
+
+    public PageResult(List<T> list, Integer page, Integer size) {
+        this.list = list;
+        this.page = page;
+        this.size = size;
     }
 
     public PageResult(List<T> list, Long total) {
@@ -302,15 +314,28 @@ public class PageResult<T> implements Serializable {
 
     public static <T> PageResult<T> of(List<T> list, Integer page, Integer size, Long total) {
         if (page == null || size == null) {
-            return of(list, total);
+            return new PageResult<>(list, total);
         }
-        boolean next = page * size < total;
-        boolean previous = page > 1;
-        long totalPages = 0L;
-        if (size > 0) {
+        if (total == null) {
+            return new PageResult<>(list, page, size);
+        }
+        boolean next;
+        boolean previous;
+        long totalPages;
+        if (page > 0 && size > 0) {
+            next = page * size < total;
+            previous = page != 1;
             totalPages = total % size > 0 ? total / size + 1 : total / size;
+        } else {
+            next = false;
+            previous = false;
+            totalPages = 0L;
         }
         return new PageResult<>(list, page, size, total, totalPages, next, previous);
+    }
+
+    public static <T> PageResult<T> of(List<T> list, Integer page, Integer size) {
+        return new PageResult<>(list, page, size);
     }
 
     public static <T> PageResult<T> of(List<T> list, Long total) {
@@ -347,118 +372,9 @@ public class PageResult<T> implements Serializable {
         return new ArrayList<>(collection);
     }
 
-    public static <T> Builder<T> builder() {
-        return new Builder<>();
-    }
-
-    public List<T> getList() {
-        return list;
-    }
-
-    public void setList(List<T> list) {
-        this.list = list;
-    }
-
-    public Integer getPage() {
-        return page;
-    }
-
-    public void setPage(Integer page) {
-        this.page = page;
-    }
-
-    public Integer getSize() {
-        return size;
-    }
-
-    public void setSize(Integer size) {
-        this.size = size;
-    }
-
-    public Long getTotal() {
-        return total;
-    }
-
-    public void setTotal(Long total) {
-        this.total = total;
-    }
-
-    public Long getTotalPages() {
-        return totalPages;
-    }
-
-    public void setTotalPages(Long totalPages) {
-        this.totalPages = totalPages;
-    }
-
-    public Boolean getNext() {
-        return next;
-    }
-
-    public void setNext(Boolean next) {
-        this.next = next;
-    }
-
-    public Boolean getPrevious() {
-        return previous;
-    }
-
-    public void setPrevious(Boolean previous) {
-        this.previous = previous;
-    }
-
-    public static class Builder<T> {
-        private List<T> list;
-        private Integer page;
-        private Integer size;
-        private Long total;
-        private Long totalPages;
-        private Boolean next;
-        private Boolean previous;
-
-        public Builder<T> list(List<T> list) {
-            this.list = list;
-            return this;
-        }
-
-        public Builder<T> page(Integer page) {
-            this.page = page;
-            return this;
-        }
-
-        public Builder<T> size(Integer size) {
-            this.size = size;
-            return this;
-        }
-
-        public Builder<T> total(Long total) {
-            this.total = total;
-            return this;
-        }
-
-        public Builder<T> totalPages(Long totalPages) {
-            this.totalPages = totalPages;
-            return this;
-        }
-
-        public Builder<T> next(Boolean next) {
-            this.next = next;
-            return this;
-        }
-
-        public Builder<T> previous(Boolean previous) {
-            this.previous = previous;
-            return this;
-        }
-
-        public PageResult<T> build() {
-            return new PageResult<>(list, page, size, total, totalPages, next, previous);
-        }
-
-    }
+    /* getter setter */
 
 }
-
 ```
 
 ```java
@@ -594,11 +510,5 @@ public final class PageUtils {
 ```
 
 ```java
-List<User> list = userMapper.listUser(search);
-PageResult<User> result = PageUtils.of(list);
-```
-
-```java
-List<User> list = userMapper.listUser(search);
-PageResult<UserDTO> result = PageUtils.of(list, user -> new UserDTO(user.getId(), user.getName()));
+PageResult<Foo> result = PageUtils.of(fooMapper.list(search));
 ```

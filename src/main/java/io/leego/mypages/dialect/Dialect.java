@@ -10,13 +10,13 @@ import org.apache.ibatis.mapping.MappedStatement;
  */
 public interface Dialect {
 
-    String getPaginationSql(String sql);
+    String getPagingSql(String sql);
 
-    String getPaginationSql(String sql, int offset, int rows);
+    String getPagingSql(String sql, PaginationParam param);
 
     String getCountSql(String sql);
 
     String getCountSql(String sql, String column);
 
-    Object processParams(MappedStatement ms, Object parameter, BoundSql boundSql, CacheKey pageKey, PaginationParam param);
+    Object processParams(MappedStatement ms, Object parameter, BoundSql boundSql, CacheKey pageKey, PaginationParam param) throws Exception;
 }

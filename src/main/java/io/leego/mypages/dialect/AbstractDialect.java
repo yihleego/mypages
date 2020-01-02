@@ -1,12 +1,12 @@
 package io.leego.mypages.dialect;
 
-import io.leego.mypages.util.MetaObjectUtils;
+import io.leego.mypages.util.BeanUtils;
 import io.leego.mypages.util.PaginationParam;
+import io.leego.mypages.util.ReflectUtils;
 import org.apache.ibatis.cache.CacheKey;
 import org.apache.ibatis.mapping.BoundSql;
 import org.apache.ibatis.mapping.MappedStatement;
 import org.apache.ibatis.mapping.ParameterMapping;
-import org.apache.ibatis.reflection.MetaObject;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -19,10 +19,11 @@ import java.util.Map;
 public abstract class AbstractDialect implements Dialect {
     protected static final String ASTERISK = "*";
     protected static final String PAGINATION_PARAM = "MP_PAGINATION_PARAM";
+    protected static final String PARAMETER_MAPPINGS = "parameterMappings";
 
     @Override
-    public String getPaginationSql(String sql, int offset, int rows) {
-        return getPaginationSql(sql);
+    public String getPagingSql(String sql, PaginationParam param) {
+        return getPagingSql(sql);
     }
 
     @Override
@@ -39,42 +40,45 @@ public abstract class AbstractDialect implements Dialect {
     }
 
     @Override
-    public Object processParams(MappedStatement ms, Object parameter, BoundSql boundSql, CacheKey pageKey, PaginationParam paginationParam) {
+    public Object processParams(MappedStatement ms, Object parameter, BoundSql boundSql, CacheKey pageKey, PaginationParam param) throws Exception {
         Map<Object, Object> paramMap;
         if (parameter == null) {
+            // Create a new instance, if the parameter is null.
             paramMap = new HashMap<>();
         } else if (parameter instanceof Map) {
+            // Prevent unmodifiable map object from throwing exceptions.
             paramMap = new HashMap<>((Map<?, ?>) parameter);
         } else {
-            paramMap = new HashMap<>();
             boolean hasTypeHandler = ms.getConfiguration().getTypeHandlerRegistry().hasTypeHandler(parameter.getClass());
-            MetaObject metaObject = MetaObjectUtils.forObject(parameter);
-            if (!hasTypeHandler) {
-                for (String name : metaObject.getGetterNames()) {
-                    paramMap.put(name, metaObject.getValue(name));
-                }
-            }
+            paramMap = hasTypeHandler ? new HashMap<>() : BeanUtils.readAll(parameter);
         }
-        List<ParameterMapping> newParameterMappings;
-        if (boundSql.getParameterMappings() instanceof ArrayList) {
-            newParameterMappings = boundSql.getParameterMappings();
+        List<ParameterMapping> parameterMappings;
+        if (boundSql.getParameterMappings() == null) {
+            // Create a new instance, if the parameter is null.
+            parameterMappings = new ArrayList<>();
+        } else if (boundSql.getParameterMappings().getClass() == ArrayList.class) {
+            // Cast the parameter to list.
+            parameterMappings = boundSql.getParameterMappings();
         } else {
-            newParameterMappings = new ArrayList<>(boundSql.getParameterMappings());
+            // Prevent unmodifiable list object from throwing exceptions.
+            parameterMappings = new ArrayList<>(boundSql.getParameterMappings());
         }
-        Object[] params = getPaginationParam(paginationParam);
+
+        // Append paging parameters.
+        Object[] params = getPagingParams(param);
         for (int i = 0; i < params.length; i++) {
             String property = PAGINATION_PARAM + i;
             paramMap.put(property, params[i]);
             pageKey.update(params[i]);
-            newParameterMappings.add(new ParameterMapping.Builder(ms.getConfiguration(), property, params[i].getClass()).build());
+            parameterMappings.add(new ParameterMapping.Builder(ms.getConfiguration(), property, params[i].getClass()).build());
         }
-        if (boundSql.getParameterMappings() != null) {
-            MetaObject metaObject = MetaObjectUtils.forObject(boundSql);
-            metaObject.setValue("parameterMappings", newParameterMappings);
+        if (parameterMappings != boundSql.getParameterMappings()) {
+            // Overwrite the value of the parameterMappings, [ATTENTION] There is no "setParameterMappings" method.
+            ReflectUtils.setFieldValue(boundSql, PARAMETER_MAPPINGS, parameterMappings, true);
         }
         return paramMap;
     }
 
-    public abstract Object[] getPaginationParam(PaginationParam paginationParam);
+    public abstract Object[] getPagingParams(PaginationParam param);
 
 }

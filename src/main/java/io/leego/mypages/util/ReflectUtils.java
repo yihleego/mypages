@@ -109,6 +109,32 @@ public final class ReflectUtils {
         return fieldList.toArray(new Field[0]);
     }
 
+    public static void setFieldValue(Object o, String fieldName, Object value) throws NoSuchFieldException, IllegalAccessException {
+        Field field = getField(o.getClass(), fieldName);
+        if (field == null) {
+            throw new NoSuchFieldException(fieldName);
+        }
+        field.set(o, value);
+    }
+
+    public static void setFieldValue(Object o, String fieldName, Object value, boolean accessible) throws NoSuchFieldException, IllegalAccessException {
+        Field field = getField(o.getClass(), fieldName);
+        if (field == null) {
+            throw new NoSuchFieldException(fieldName);
+        }
+        setAccessible(field, accessible);
+        field.set(o, value);
+    }
+
+    public static void setFieldValue(Object o, Field field, Object value) throws IllegalAccessException {
+        field.set(o, value);
+    }
+
+    public static void setFieldValue(Object o, Field field, Object value, boolean accessible) throws IllegalAccessException {
+        setAccessible(field, accessible);
+        field.set(o, value);
+    }
+
 
     public static Method getDeclaredMethod(Object o, String methodName) {
         return getDeclaredMethod(o.getClass(), methodName);
@@ -159,14 +185,10 @@ public final class ReflectUtils {
     public static Method getMethod(Class<?> clazz, String methodName, Class<?>... parameterTypes) {
         Class<?> targetClass = clazz;
         while (targetClass != null && targetClass != Object.class) {
-            Method method;
             try {
-                method = targetClass.getDeclaredMethod(methodName, parameterTypes);
+                return targetClass.getDeclaredMethod(methodName, parameterTypes);
             } catch (NoSuchMethodException ignored) {
-                return null;
-            }
-            if (method != null) {
-                return method;
+                // ignored
             }
             targetClass = targetClass.getSuperclass();
         }
@@ -367,6 +389,18 @@ public final class ReflectUtils {
 
     public static boolean isNative(Method method) {
         return Modifier.isNative(method.getModifiers());
+    }
+
+    public static void setAccessible(Method method, boolean flag) {
+        if (!isPublic(method)) {
+            method.setAccessible(flag);
+        }
+    }
+
+    public static void setAccessible(Field field, boolean flag) {
+        if (!isPublic(field)) {
+            field.setAccessible(flag);
+        }
     }
 
 }

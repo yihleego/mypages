@@ -70,7 +70,7 @@ public class Page<T> implements Serializable {
         boolean previous;
         long totalPages;
         if (page > 0 && size > 0) {
-            next = page * size < total;
+            next = page.longValue() * size < total;
             previous = page != 1;
             totalPages = total % size > 0 ? total / size + 1 : total / size;
         } else {

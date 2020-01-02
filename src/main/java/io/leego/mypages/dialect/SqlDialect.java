@@ -1,6 +1,6 @@
 package io.leego.mypages.dialect;
 
-import io.leego.mypages.exception.PaginationException;
+import io.leego.mypages.exception.SqlDialectException;
 
 /**
  * @author Yihleego
@@ -44,7 +44,7 @@ public enum SqlDialect {
             // Uses the constructor represented by the Constructor object to initialize a new instance
             return dialectClass.getConstructor().newInstance();
         } catch (Exception e) {
-            throw new PaginationException(e);
+            throw new SqlDialectException(e);
         }
     }
 
