@@ -111,12 +111,14 @@ public class PaginationInterceptor implements Interceptor {
     @Override
     public Object intercept(Invocation invocation) throws Throwable {
         Object[] args = invocation.getArgs();
+        Method method = invocation.getMethod();
+        MappedStatement ms = (MappedStatement) args[0];
         Object parameter = args[1];
-        Class<?> returnType = invocation.getMethod().getReturnType();
+        Class<?> returnType = method.getReturnType();
         if (!isPaging(parameter, returnType)) {
             return invocation.proceed();
         }
-        PaginationParam param = analyseParameter(parameter);
+        PaginationParam param = analyseParameter(parameter, ms.getId());
         if (!param.isPageable()) {
             return invocation.proceed();
         }
@@ -124,7 +126,6 @@ public class PaginationInterceptor implements Interceptor {
             throw new PaginationException("SQL dialect is not configured");
         }
         Executor executor = (Executor) invocation.getTarget();
-        MappedStatement ms = (MappedStatement) args[0];
         RowBounds rowBounds = (RowBounds) args[2];
         ResultHandler resultHandler = (ResultHandler) args[3];
         BoundSql boundSql;
@@ -158,7 +159,7 @@ public class PaginationInterceptor implements Interceptor {
     }
 
     /**
-     * Returns count quantity
+     * Returns count quantity.
      */
     private long count(Executor executor, MappedStatement ms, BoundSql boundSql, Object parameter, ResultHandler resultHandler, String countColumn) throws SQLException {
         String countMsId = ms.getId() + COUNT_SUFFIX;
@@ -172,7 +173,7 @@ public class PaginationInterceptor implements Interceptor {
     }
 
     /**
-     * Returns paging query results
+     * Returns paging query results.
      */
     private <E> List<E> query(Executor executor, MappedStatement ms, BoundSql boundSql, Object parameter, ResultHandler resultHandler, CacheKey cacheKey, PaginationParam param) throws Exception {
         parameter = dialect.processParams(ms, parameter, boundSql, cacheKey, param);
@@ -183,7 +184,7 @@ public class PaginationInterceptor implements Interceptor {
     }
 
     /**
-     * Returns a new instanced object of {@link MappedStatement}
+     * Returns a new instanced object of {@link MappedStatement}.
      * @param ms   The origin {@link MappedStatement}
      * @param msId New id
      * @return a new instanced object of {@link MappedStatement}
@@ -217,7 +218,7 @@ public class PaginationInterceptor implements Interceptor {
     }
 
     /**
-     * Returns a new instanced object of {@link BoundSql}
+     * Returns a new instanced object of {@link BoundSql}.
      * @param ms       The origin {@link MappedStatement}
      * @param boundSql The origin {@link BoundSql}
      * @param sql      SQL string
@@ -257,7 +258,7 @@ public class PaginationInterceptor implements Interceptor {
 
     /**
      * Returns <code>true</code> when {@link DisableCount} is absent
-     * and enable count equals <code>true</code>
+     * and enable count equals <code>true</code>.
      * @param parameter The parameter
      */
     private boolean isCounting(Object parameter) {
@@ -268,8 +269,8 @@ public class PaginationInterceptor implements Interceptor {
             return true;
         }
         try {
-            Boolean value = parseBoolean(BeanUtils.read(parameter, enableCountFieldName));
-            return value != null ? value : false;
+            Object value = BeanUtils.read(parameter, enableCountFieldName);
+            return parseBoolean(value, false);
         } catch (Exception e) {
             return false;
         }
@@ -280,9 +281,10 @@ public class PaginationInterceptor implements Interceptor {
      * @param parameter The parameter
      * @return {@link PaginationParam}
      */
-    private PaginationParam analyseParameter(Object parameter) {
+    private PaginationParam analyseParameter(Object parameter, String msId) {
         PaginationUnrefinedParam unrefinedParam = unrefinedParamMap.computeIfAbsent(
-                parameter.getClass().getName(), className -> buildPaginationUnrefinedParam(parameter));
+                msId + "#" + parameter.getClass().getName(),
+                className -> buildPaginationUnrefinedParam(parameter));
         int defaultPage = unrefinedParam.getDefaultPage();
         int defaultSize = unrefinedParam.getDefaultSize();
         int maxPage = unrefinedParam.getMaxPage();
@@ -352,7 +354,7 @@ public class PaginationInterceptor implements Interceptor {
                     offset = (maxPage - 1) * rows;
                 }
             }
-            // Converts [offset, rows] to [page, size] if rows can be divided by offset
+            // Converts [offset, rows] to [page, size] if rows can be divided by offset.
             if (rows > 0 && offset % rows == 0) {
                 page = offset / rows + 1;
                 size = rows;
@@ -383,7 +385,6 @@ public class PaginationInterceptor implements Interceptor {
         Method offsetReadMethod = null;
         Method rowsReadMethod = null;
         Method countColumnReadMethod = null;
-        boolean mapType;
         Pagination pagination = ReflectUtils.getAnnotation(parameter, Pagination.class);
         if (pagination != null) {
             reasonable = pagination.reasonable() ? pagination.reasonable() : this.reasonable;
@@ -400,6 +401,7 @@ public class PaginationInterceptor implements Interceptor {
             maxSize = this.maxSize;
             countColumn = this.countColumn;
         }
+        // There may be an object that extends Search.
         if (parameter instanceof Search) {
             return new PaginationUnrefinedParam(
                     reasonable,
@@ -407,7 +409,19 @@ public class PaginationInterceptor implements Interceptor {
                     defaultSize,
                     maxPage,
                     maxSize,
-                    countColumn);
+                    countColumn,
+                    false);
+        }
+        // There may be a map object.
+        if (parameter instanceof Map) {
+            return new PaginationUnrefinedParam(
+                    reasonable,
+                    defaultPage,
+                    defaultSize,
+                    maxPage,
+                    maxSize,
+                    countColumn,
+                    true);
         }
         if (this.obtainParamsFromFields) {
             PropertyDescriptor[] pds;
@@ -431,65 +445,59 @@ public class PaginationInterceptor implements Interceptor {
                     }
                 }
             }
-        } else {
-            // Gets read method by field annotations.
-            Field[] fields = ReflectUtils.getFields(parameter);
-            for (Field field : fields) {
-                if (ReflectUtils.isStatic(field)) {
-                    continue;
-                }
-                Annotation[] annotations = field.getDeclaredAnnotations();
-                if (annotations.length == 0) {
-                    continue;
-                }
-                for (Annotation annotation : annotations) {
-                    try {
-                        if (annotation instanceof Page) {
-                            pageReadMethod = BeanUtils.getReadMethod(field);
-                        } else if (annotation instanceof Size) {
-                            sizeReadMethod = BeanUtils.getReadMethod(field);
-                        } else if (annotation instanceof Offset) {
-                            offsetReadMethod = BeanUtils.getReadMethod(field);
-                        } else if (annotation instanceof Rows) {
-                            rowsReadMethod = BeanUtils.getReadMethod(field);
-                        } else if (annotation instanceof CountColumn) {
-                            countColumnReadMethod = BeanUtils.getReadMethod(field);
-                        }
-                    } catch (IntrospectionException ignored) {
-                        // ignored
-                    }
-                }
+        }
+        // Obtains read-method by field annotations.
+        Field[] fields = ReflectUtils.getFields(parameter);
+        for (Field field : fields) {
+            if (ReflectUtils.isStatic(field)) {
+                continue;
             }
-            // Gets read method by method annotations.
-            Method[] methods = ReflectUtils.getMethods(parameter);
-            for (Method method : methods) {
-                if (ReflectUtils.isStatic(method)) {
-                    continue;
-                }
-                Annotation[] annotations = method.getDeclaredAnnotations();
-                if (annotations.length == 0) {
-                    continue;
-                }
-                for (Annotation annotation : annotations) {
+            Annotation[] annotations = field.getDeclaredAnnotations();
+            if (annotations.length == 0) {
+                continue;
+            }
+            for (Annotation annotation : annotations) {
+                try {
                     if (annotation instanceof Page) {
-                        pageReadMethod = method;
+                        pageReadMethod = BeanUtils.getReadMethod(field);
                     } else if (annotation instanceof Size) {
-                        sizeReadMethod = method;
+                        sizeReadMethod = BeanUtils.getReadMethod(field);
                     } else if (annotation instanceof Offset) {
-                        offsetReadMethod = method;
+                        offsetReadMethod = BeanUtils.getReadMethod(field);
                     } else if (annotation instanceof Rows) {
-                        rowsReadMethod = method;
+                        rowsReadMethod = BeanUtils.getReadMethod(field);
                     } else if (annotation instanceof CountColumn) {
-                        countColumnReadMethod = method;
+                        countColumnReadMethod = BeanUtils.getReadMethod(field);
                     }
+                } catch (IntrospectionException ignored) {
+                    // ignored
                 }
             }
         }
-        // There may be a map object or an object that implements Map
-        mapType = parameter instanceof Map
-                && this.obtainParamsFromFields
-                && (pageReadMethod == null || sizeReadMethod == null)
-                && (offsetReadMethod == null || rowsReadMethod == null);
+        // Obtains read-method by method annotations.
+        Method[] methods = ReflectUtils.getMethods(parameter);
+        for (Method method : methods) {
+            if (ReflectUtils.isStatic(method)) {
+                continue;
+            }
+            Annotation[] annotations = method.getDeclaredAnnotations();
+            if (annotations.length == 0) {
+                continue;
+            }
+            for (Annotation annotation : annotations) {
+                if (annotation instanceof Page) {
+                    pageReadMethod = method;
+                } else if (annotation instanceof Size) {
+                    sizeReadMethod = method;
+                } else if (annotation instanceof Offset) {
+                    offsetReadMethod = method;
+                } else if (annotation instanceof Rows) {
+                    rowsReadMethod = method;
+                } else if (annotation instanceof CountColumn) {
+                    countColumnReadMethod = method;
+                }
+            }
+        }
         return new PaginationUnrefinedParam(
                 reasonable,
                 defaultPage,
@@ -502,7 +510,7 @@ public class PaginationInterceptor implements Interceptor {
                 offsetReadMethod,
                 rowsReadMethod,
                 countColumnReadMethod,
-                mapType);
+                false);
     }
 
     /**
@@ -560,6 +568,9 @@ public class PaginationInterceptor implements Interceptor {
      * @return The value to which the specified key is mapped
      */
     private Object getMapValue(Map map, Object key) {
+        if (map == null || key == null) {
+            return null;
+        }
         try {
             // The map may be an object of {@link MapperMethod.ParamMap}
             return map.get(key);
@@ -584,20 +595,27 @@ public class PaginationInterceptor implements Interceptor {
     /**
      * Parses the object argument as a boolean.
      */
-    private Boolean parseBoolean(Object value) {
+    private boolean parseBoolean(Object value, boolean defaultValue) {
         if (value == null) {
-            return null;
+            return defaultValue;
         }
         if (value instanceof Boolean) {
-            return (Boolean) value;
+            return (boolean) value;
         } else if (value instanceof Number) {
             // Returns false if the value equals 0.
             return ((Number) value).intValue() != 0;
         } else if (value instanceof String) {
-            // Returns true if the text equals "true" (ignore case).
-            return Boolean.parseBoolean((String) value);
+            String s = (String) value;
+            // Returns true if the text equals "true".
+            if ("true".equalsIgnoreCase(s)) {
+                return true;
+            }
+            // Returns false if the text equals "false".
+            if ("false".equalsIgnoreCase(s)) {
+                return false;
+            }
         }
-        return null;
+        return defaultValue;
     }
 
     /**

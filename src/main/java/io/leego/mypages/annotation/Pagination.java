@@ -60,7 +60,7 @@ public @interface Pagination {
      */
     boolean reasonable() default false;
 
-    /** The counting of the column. Defaults to "*". */
+    /** The counting of the column. The default value is "*". */
     String countColumn() default "";
 
 }

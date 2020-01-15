@@ -22,13 +22,14 @@ public class PaginationUnrefinedParam {
     public PaginationUnrefinedParam() {
     }
 
-    public PaginationUnrefinedParam(boolean reasonable, int defaultPage, int defaultSize, int maxPage, int maxSize, String countColumn) {
+    public PaginationUnrefinedParam(boolean reasonable, int defaultPage, int defaultSize, int maxPage, int maxSize, String countColumn, boolean mapType) {
         this.reasonable = reasonable;
         this.defaultPage = defaultPage;
         this.defaultSize = defaultSize;
         this.maxPage = maxPage;
         this.maxSize = maxSize;
         this.countColumn = countColumn;
+        this.mapType = mapType;
     }
 
     public PaginationUnrefinedParam(boolean reasonable, int defaultPage, int defaultSize, int maxPage, int maxSize, String countColumn, Method pageReadMethod, Method sizeReadMethod, Method offsetReadMethod, Method rowsReadMethod, Method countColumnReadMethod, boolean mapType) {

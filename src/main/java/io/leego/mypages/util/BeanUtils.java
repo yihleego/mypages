@@ -171,7 +171,7 @@ public final class BeanUtils {
      * @return value
      * @throws NoSuchMethodException     if method is not found.
      * @throws IllegalAccessException    if the method is not accessible.
-     * @throws InvocationTargetException if the underlying method  throws an exception.
+     * @throws InvocationTargetException if the underlying method throws an exception.
      */
     public static Object read(Object o, String fieldName) throws IntrospectionException, NoSuchMethodException, IllegalAccessException, InvocationTargetException {
         Method method = getReadMethod(o.getClass(), fieldName);
@@ -191,7 +191,7 @@ public final class BeanUtils {
      * @return value
      * @throws NoSuchMethodException     if method is not found.
      * @throws IllegalAccessException    if the method is not accessible.
-     * @throws InvocationTargetException if the underlying method  throws an exception.
+     * @throws InvocationTargetException if the underlying method throws an exception.
      */
     public static Object read(Object o, Field field) throws IntrospectionException, NoSuchMethodException, IllegalAccessException, InvocationTargetException {
         Method method = getReadMethod(o.getClass(), field.getName());
@@ -210,7 +210,7 @@ public final class BeanUtils {
      * @param method {@link Method}
      * @return value
      * @throws IllegalAccessException    if the method is not accessible.
-     * @throws InvocationTargetException if the underlying method  throws an exception.
+     * @throws InvocationTargetException if the underlying method throws an exception.
      */
     public static Object read(Object o, Method method) throws IllegalAccessException, InvocationTargetException {
         if (!Modifier.isPublic(method.getModifiers())) {
@@ -227,7 +227,7 @@ public final class BeanUtils {
      * @return value
      * @throws NoSuchMethodException     if method is not found.
      * @throws IllegalAccessException    if the method is not accessible.
-     * @throws InvocationTargetException if the underlying method  throws an exception.
+     * @throws InvocationTargetException if the underlying method throws an exception.
      */
     public static <T> T read(Object o, String fieldName, Class<T> returnType) throws IntrospectionException, NoSuchMethodException, IllegalAccessException, InvocationTargetException {
         Object value = read(o, fieldName);
@@ -245,7 +245,7 @@ public final class BeanUtils {
      * @return value
      * @throws NoSuchMethodException     if method is not found.
      * @throws IllegalAccessException    if the method is not accessible.
-     * @throws InvocationTargetException if the underlying method  throws an exception.
+     * @throws InvocationTargetException if the underlying method throws an exception.
      */
     public static <T> T read(Object o, Field field, Class<T> returnType) throws IntrospectionException, NoSuchMethodException, IllegalAccessException, InvocationTargetException {
         Object value = read(o, field);
@@ -262,7 +262,7 @@ public final class BeanUtils {
      * @param returnType The return type
      * @return value
      * @throws IllegalAccessException    if the method is not accessible.
-     * @throws InvocationTargetException if the underlying method  throws an exception.
+     * @throws InvocationTargetException if the underlying method throws an exception.
      */
     public static <T> T read(Object o, Method method, Class<T> returnType) throws IllegalAccessException, InvocationTargetException {
         Object value = read(o, method);
@@ -278,7 +278,7 @@ public final class BeanUtils {
      * @return values
      * @throws IntrospectionException    if an exception occurs during introspection.
      * @throws IllegalAccessException    if the method is not accessible.
-     * @throws InvocationTargetException if the underlying method  throws an exception.
+     * @throws InvocationTargetException if the underlying method throws an exception.
      */
     public static Map<Object, Object> readAll(Object o) throws IntrospectionException, IllegalAccessException, InvocationTargetException {
         PropertyDescriptor[] descriptors = getPropertyDescriptors(o.getClass());
@@ -296,7 +296,7 @@ public final class BeanUtils {
      * @return values
      * @throws IntrospectionException    if an exception occurs during introspection.
      * @throws IllegalAccessException    if the method is not accessible.
-     * @throws InvocationTargetException if the underlying method  throws an exception.
+     * @throws InvocationTargetException if the underlying method throws an exception.
      */
     public static <M extends Map<Object, Object>> M readAll(Object o, Supplier<M> mapFactory) throws IllegalAccessException, InvocationTargetException, IntrospectionException {
         PropertyDescriptor[] descriptors = getPropertyDescriptors(o.getClass());
@@ -315,7 +315,7 @@ public final class BeanUtils {
      * @return result
      * @throws NoSuchMethodException     if method is not found.
      * @throws IllegalAccessException    if the method is not accessible.
-     * @throws InvocationTargetException if the underlying method  throws an exception.
+     * @throws InvocationTargetException if the underlying method throws an exception.
      */
     public static Object write(Object o, String fieldName, Object arg) throws IntrospectionException, NoSuchMethodException, IllegalAccessException, InvocationTargetException {
         Method method = getWriteMethod(o.getClass(), fieldName);
@@ -336,7 +336,7 @@ public final class BeanUtils {
      * @return result
      * @throws NoSuchMethodException     if method is not found.
      * @throws IllegalAccessException    if the method is not accessible.
-     * @throws InvocationTargetException if the underlying method  throws an exception.
+     * @throws InvocationTargetException if the underlying method throws an exception.
      */
     public static Object write(Object o, Field field, Object arg) throws IntrospectionException, NoSuchMethodException, IllegalAccessException, InvocationTargetException {
         Method method = getWriteMethod(o.getClass(), field.getName());
@@ -356,7 +356,7 @@ public final class BeanUtils {
      * @param arg    The argument used for the method call
      * @return result
      * @throws IllegalAccessException    if the method is not accessible.
-     * @throws InvocationTargetException if the underlying method  throws an exception.
+     * @throws InvocationTargetException if the underlying method throws an exception.
      */
     public static Object write(Object o, Method method, Object arg) throws IllegalAccessException, InvocationTargetException {
         if (!Modifier.isPublic(method.getModifiers())) {

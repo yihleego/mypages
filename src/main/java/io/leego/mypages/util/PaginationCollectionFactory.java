@@ -50,7 +50,7 @@ public final class PaginationCollectionFactory {
                 return new PaginationPriorityQueue<>(collection, total, page, size);
             }
         }
-        throw new UnsupportedReturnTypeException("Custom type is not supported, please use Java Collection");
+        throw new UnsupportedReturnTypeException("The return type \"" + returnType.getName() + "\" is not supported, please use Java Collection.");
     }
 
     public static Collection<?> build(Class<?> returnType, Long total, Integer page, Integer size) {
@@ -75,7 +75,7 @@ public final class PaginationCollectionFactory {
                 return new PaginationPriorityQueue<>(total, page, size);
             }
         }
-        throw new UnsupportedReturnTypeException("Custom type is not supported, please use Java Collection");
+        throw new UnsupportedReturnTypeException("The return type \"" + returnType.getName() + "\" is not supported, please use Java Collection.");
     }
 
     public static Collection<?> empty(Class<?> returnType) {

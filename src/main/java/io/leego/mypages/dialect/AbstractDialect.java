@@ -43,7 +43,6 @@ public abstract class AbstractDialect implements Dialect {
     public Object processParams(MappedStatement ms, Object parameter, BoundSql boundSql, CacheKey pageKey, PaginationParam param) throws Exception {
         Map<Object, Object> paramMap;
         if (parameter == null) {
-            // Create a new instance, if the parameter is null.
             paramMap = new HashMap<>();
         } else if (parameter instanceof Map) {
             // Prevent unmodifiable map object from throwing exceptions.
@@ -54,10 +53,8 @@ public abstract class AbstractDialect implements Dialect {
         }
         List<ParameterMapping> parameterMappings;
         if (boundSql.getParameterMappings() == null) {
-            // Create a new instance, if the parameter is null.
             parameterMappings = new ArrayList<>();
         } else if (boundSql.getParameterMappings().getClass() == ArrayList.class) {
-            // Cast the parameter to list.
             parameterMappings = boundSql.getParameterMappings();
         } else {
             // Prevent unmodifiable list object from throwing exceptions.
