@@ -109,6 +109,32 @@ public final class ReflectUtils {
         return fieldList.toArray(new Field[0]);
     }
 
+    public static Object getFieldValue(Object o, String fieldName) throws NoSuchFieldException, IllegalAccessException {
+        Field field = getField(o.getClass(), fieldName);
+        if (field == null) {
+            throw new NoSuchFieldException(fieldName);
+        }
+        return field.get(o);
+    }
+
+    public static Object getFieldValue(Object o, String fieldName, boolean accessible) throws NoSuchFieldException, IllegalAccessException {
+        Field field = getField(o.getClass(), fieldName);
+        if (field == null) {
+            throw new NoSuchFieldException(fieldName);
+        }
+        setAccessible(field, accessible);
+        return field.get(o);
+    }
+
+    public static Object getFieldValue(Object o, Field field) throws IllegalAccessException {
+        return field.get(o);
+    }
+
+    public static Object getFieldValue(Object o, Field field, boolean accessible) throws IllegalAccessException {
+        setAccessible(field, accessible);
+        return field.get(o);
+    }
+
     public static void setFieldValue(Object o, String fieldName, Object value) throws NoSuchFieldException, IllegalAccessException {
         Field field = getField(o.getClass(), fieldName);
         if (field == null) {

@@ -8,7 +8,7 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
 /**
- * Zero-based row index
+ * Annotation to obtain offset.
  * @author Yihleego
  */
 @Retention(RetentionPolicy.RUNTIME)

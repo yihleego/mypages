@@ -8,7 +8,7 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
 /**
- * Disables pagination capability
+ * Disables pagination capability.
  * @author Yihleego
  */
 @Retention(RetentionPolicy.RUNTIME)

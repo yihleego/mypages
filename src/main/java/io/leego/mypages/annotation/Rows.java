@@ -8,7 +8,7 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
 /**
- * The rows of the page to be returned
+ * Annotation to obtain rows.
  * @author Yihleego
  */
 @Retention(RetentionPolicy.RUNTIME)

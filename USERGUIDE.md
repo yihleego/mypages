@@ -8,7 +8,7 @@ Please make sure that Java version is 1.8 and above.
 
 ```xml
 <properties>
-    <mypages.version>0.2.1</mypages.version>
+    <mypages.version>0.3.0</mypages.version>
 </properties>
 
 <dependency>
@@ -21,7 +21,7 @@ Please make sure that Java version is 1.8 and above.
 ## Gradle Dependency
 
 ```xml
-implementation 'io.leego:mypages:0.2.1'
+implementation 'io.leego:mypages:0.3.0'
 ```
 
 # Quick Setup
@@ -188,8 +188,6 @@ PaginationInterceptor plugin = new PaginationInterceptor()
     .enableCountFieldName("allowCount")
     // Whether to skip query if total value equals zero.
     .skipQueryIfCountEqualsZero(true)
-    // Whether to enable reasonable.
-    .reasonable(true)
     // Replaces page with defaultPage if page is invalid.
     .defaultPage(1)
     // Replaces size with defaultSize if size is invalid.
@@ -213,21 +211,21 @@ public class SearchDTO extends io.leego.mypages.util.Search {
 
 # Reasonable
 
-Rationalize parameters if reasonable is enabled, the following parameters can be set:
+Rationalize parameters if the value is invalid, the following parameters can be set:
 
-**defaultPage**: Replaces page with defaultPage, if page number is null or less than 1, the default is 1.
+**defaultPage**: Replaces page with defaultPage if page number is null or less than 1.
 
-**defaultSize**: Replaces size with defaultSize, if page size is null or less than 1, the default is 10.
+**defaultSize**: Replaces size with defaultSize if page size is null or less than 1.
 
-**maxPage**: Replaces page with defaultPage, if page number is greater than this.
+**maxPage**: Replaces page with maxPage if page number is greater than maxPage.
 
-**maxSize**: Replaces size with defaultSize, if page size is greater than this.
+**maxSize**: Replaces size with maxSize if page size is greater than maxSize.
 
 
 These can be set up like the following:
 
 ```java
-@Pagination(defaultPage = 1, defaultSize = 10, maxPage = 100, maxSize = 100, reasonable = true)
+@Pagination(defaultPage = 1, defaultSize = 10, maxPage = 100, maxSize = 100)
 public class SearchDTO {}
 ```
 
@@ -236,7 +234,6 @@ Or
 ```java
 new PaginationInterceptor()
     .sqlDialect(SqlDialect.MYSQL)
-    .reasonable(true)
     .defaultPage(1)
     .defaultSize(10)
     .maxPage(100)

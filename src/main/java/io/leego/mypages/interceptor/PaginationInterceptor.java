@@ -9,6 +9,7 @@ import io.leego.mypages.annotation.Pagination;
 import io.leego.mypages.annotation.Rows;
 import io.leego.mypages.annotation.Size;
 import io.leego.mypages.dialect.Dialect;
+import io.leego.mypages.dialect.DialectFactory;
 import io.leego.mypages.dialect.SqlDialect;
 import io.leego.mypages.exception.PaginationException;
 import io.leego.mypages.util.BeanUtils;
@@ -56,16 +57,10 @@ import java.util.concurrent.ConcurrentMap;
         @Signature(type = Executor.class, method = "query", args = {MappedStatement.class, Object.class, RowBounds.class, ResultHandler.class}),
         @Signature(type = Executor.class, method = "query", args = {MappedStatement.class, Object.class, RowBounds.class, ResultHandler.class, CacheKey.class, BoundSql.class})})
 public class PaginationInterceptor implements Interceptor {
-    private static final String COUNT_SUFFIX = "#COUNT";
-    /**
-     * The specified SQL dialect,
-     * this value can be null if the {@link #dialect} is specified.
-     */
+    private static final String COUNT_SUFFIX = "_COUNT";
+    /** The specified SQL dialect, it can be null if the {@link #dialect} is specified. */
     private SqlDialect sqlDialect;
-    /**
-     * Object that extends {@link io.leego.mypages.dialect.Dialect},
-     * this value cannot be null.
-     */
+    /** Object that extends {@link io.leego.mypages.dialect.Dialect}, it cannot be null. */
     private Dialect dialect;
     /** Counting column name, the default value is <code>"*"</code>. */
     private String countColumn;
@@ -85,19 +80,17 @@ public class PaginationInterceptor implements Interceptor {
     private boolean obtainParamsFromFields = false;
     /** Whether to skip query if total value equals zero. */
     private boolean skipQueryIfCountEqualsZero = true;
-    /** Whether to enable reasonable. */
-    private boolean reasonable = false;
     /** Replaces <code>page</code> with <code>defaultPage</code> if <code>page</code> is invalid. */
-    private int defaultPage = 1;
+    private int defaultPage = -1;
     /** Replaces <code>size</code> with <code>defaultSize</code> if <code>size</code> is invalid. */
-    private int defaultSize = 10;
+    private int defaultSize = -1;
     /** Replaces <code>page</code> with <code>maxPage</code> if <code>page</code> is invalid. */
     private int maxPage = -1;
     /** Replaces <code>size</code> with <code>maxSize</code> if <code>size</code> is invalid. */
     private int maxSize = -1;
 
-    private ConcurrentMap<String, MappedStatement> countMsMap = new ConcurrentHashMap<>(64);
-    private ConcurrentMap<String, PaginationUnrefinedParam> unrefinedParamMap = new ConcurrentHashMap<>(64);
+    private final ConcurrentMap<String, MappedStatement> countMsMap = new ConcurrentHashMap<>(64);
+    private final ConcurrentMap<String, PaginationUnrefinedParam> unrefinedParamMap = new ConcurrentHashMap<>(64);
 
     public PaginationInterceptor() {
     }
@@ -105,7 +98,7 @@ public class PaginationInterceptor implements Interceptor {
     public PaginationInterceptor(SqlDialect sqlDialect) {
         Objects.requireNonNull(sqlDialect);
         this.sqlDialect = sqlDialect;
-        this.dialect = sqlDialect.getDialect();
+        this.dialect = DialectFactory.build(sqlDialect);
     }
 
     @Override
@@ -289,7 +282,6 @@ public class PaginationInterceptor implements Interceptor {
         int defaultSize = unrefinedParam.getDefaultSize();
         int maxPage = unrefinedParam.getMaxPage();
         int maxSize = unrefinedParam.getMaxSize();
-        boolean reasonable = unrefinedParam.isReasonable();
         String countColumn;
         Integer page;
         Integer size;
@@ -323,36 +315,32 @@ public class PaginationInterceptor implements Interceptor {
         boolean usePageSize = page != null && size != null;
         boolean useOffsetRows = offset != null && rows != null;
         if (usePageSize) {
-            if (reasonable) {
-                if (page <= 0 && defaultPage > 0) {
-                    page = defaultPage;
-                }
-                if (size <= 0 && defaultSize > 0) {
-                    size = defaultSize;
-                }
-                if (page > maxPage && maxPage > 0) {
-                    page = maxPage;
-                }
-                if (size > maxSize && maxSize > 0) {
-                    size = maxSize;
-                }
+            if (page <= 0 && defaultPage > 0) {
+                page = defaultPage;
+            }
+            if (size <= 0 && defaultSize > 0) {
+                size = defaultSize;
+            }
+            if (page > maxPage && maxPage > 0) {
+                page = maxPage;
+            }
+            if (size > maxSize && maxSize > 0) {
+                size = maxSize;
             }
             offset = (page - 1) * size;
             rows = size;
         } else if (useOffsetRows) {
-            if (reasonable) {
-                if (rows <= 0 && defaultSize > 0) {
-                    rows = defaultSize;
-                }
-                if (offset <= 0 && defaultPage > 0) {
-                    offset = (defaultPage - 1) * rows;
-                }
-                if (rows > maxSize && maxSize > 0) {
-                    rows = maxSize;
-                }
-                if (offset / rows + 1 > maxPage && maxPage > 0) {
-                    offset = (maxPage - 1) * rows;
-                }
+            if (rows <= 0 && defaultSize > 0) {
+                rows = defaultSize;
+            }
+            if (offset <= 0 && defaultPage > 0) {
+                offset = (defaultPage - 1) * rows;
+            }
+            if (rows > maxSize && maxSize > 0) {
+                rows = maxSize;
+            }
+            if (offset / rows + 1 > maxPage && maxPage > 0) {
+                offset = (maxPage - 1) * rows;
             }
             // Converts [offset, rows] to [page, size] if rows can be divided by offset.
             if (rows > 0 && offset % rows == 0) {
@@ -374,7 +362,6 @@ public class PaginationInterceptor implements Interceptor {
      * @return {@link PaginationUnrefinedParam}
      */
     private PaginationUnrefinedParam buildPaginationUnrefinedParam(Object parameter) {
-        boolean reasonable;
         int defaultPage;
         int defaultSize;
         int maxPage;
@@ -387,14 +374,12 @@ public class PaginationInterceptor implements Interceptor {
         Method countColumnReadMethod = null;
         Pagination pagination = ReflectUtils.getAnnotation(parameter, Pagination.class);
         if (pagination != null) {
-            reasonable = pagination.reasonable() ? pagination.reasonable() : this.reasonable;
             defaultPage = pagination.defaultPage() > 0 ? pagination.defaultPage() : this.defaultPage;
             defaultSize = pagination.defaultSize() > 0 ? pagination.defaultSize() : this.defaultSize;
             maxPage = pagination.maxPage() > 0 ? pagination.maxPage() : this.maxPage;
             maxSize = pagination.maxSize() > 0 ? pagination.maxSize() : this.maxSize;
             countColumn = StringUtils.isNotEmpty(pagination.countColumn()) ? pagination.countColumn() : this.countColumn;
         } else {
-            reasonable = this.reasonable;
             defaultPage = this.defaultPage;
             defaultSize = this.defaultSize;
             maxPage = this.maxPage;
@@ -404,7 +389,6 @@ public class PaginationInterceptor implements Interceptor {
         // There may be an object that extends Search.
         if (parameter instanceof Search) {
             return new PaginationUnrefinedParam(
-                    reasonable,
                     defaultPage,
                     defaultSize,
                     maxPage,
@@ -415,7 +399,6 @@ public class PaginationInterceptor implements Interceptor {
         // There may be a map object.
         if (parameter instanceof Map) {
             return new PaginationUnrefinedParam(
-                    reasonable,
                     defaultPage,
                     defaultSize,
                     maxPage,
@@ -499,7 +482,6 @@ public class PaginationInterceptor implements Interceptor {
             }
         }
         return new PaginationUnrefinedParam(
-                reasonable,
                 defaultPage,
                 defaultSize,
                 maxPage,
@@ -658,14 +640,15 @@ public class PaginationInterceptor implements Interceptor {
 
 
     public PaginationInterceptor sqlDialect(SqlDialect sqlDialect) {
-        Objects.requireNonNull(sqlDialect);
+        if (sqlDialect == null) {
+            return this;
+        }
         this.sqlDialect = sqlDialect;
-        this.dialect = sqlDialect.getDialect();
+        this.dialect = DialectFactory.build(sqlDialect);
         return this;
     }
 
     public PaginationInterceptor dialect(Dialect dialect) {
-        Objects.requireNonNull(dialect);
         this.dialect = dialect;
         return this;
     }
@@ -676,20 +659,16 @@ public class PaginationInterceptor implements Interceptor {
     }
 
     public PaginationInterceptor pagingFields(String pageFieldName, String sizeFieldName) {
-        Objects.requireNonNull(pageFieldName);
-        Objects.requireNonNull(sizeFieldName);
         this.pageFieldName = pageFieldName;
         this.sizeFieldName = sizeFieldName;
-        this.obtainParamsFromFields = true;
+        this.obtainParamsFromFields = pageFieldName != null && sizeFieldName != null;
         return this;
     }
 
     public PaginationInterceptor offsetRowsFields(String offsetFieldName, String rowsFieldName) {
-        Objects.requireNonNull(offsetFieldName);
-        Objects.requireNonNull(rowsFieldName);
         this.offsetFieldName = offsetFieldName;
         this.rowsFieldName = rowsFieldName;
-        this.obtainParamsFromFields = true;
+        this.obtainParamsFromFields = offsetFieldName != null && rowsFieldName != null;
         return this;
     }
 
@@ -705,11 +684,6 @@ public class PaginationInterceptor implements Interceptor {
 
     public PaginationInterceptor skipQueryIfCountEqualsZero(boolean skipQueryIfCountEqualsZero) {
         this.skipQueryIfCountEqualsZero = skipQueryIfCountEqualsZero;
-        return this;
-    }
-
-    public PaginationInterceptor reasonable(boolean reasonable) {
-        this.reasonable = reasonable;
         return this;
     }
 
@@ -735,8 +709,11 @@ public class PaginationInterceptor implements Interceptor {
 
 
     public void setSqlDialect(SqlDialect sqlDialect) {
+        if (sqlDialect == null) {
+            return;
+        }
         this.sqlDialect = sqlDialect;
-        this.dialect = sqlDialect.getDialect();
+        this.dialect = DialectFactory.build(sqlDialect);
     }
 
     public void setDialect(Dialect dialect) {
@@ -777,10 +754,6 @@ public class PaginationInterceptor implements Interceptor {
 
     public void setSkipQueryIfCountEqualsZero(boolean skipQueryIfCountEqualsZero) {
         this.skipQueryIfCountEqualsZero = skipQueryIfCountEqualsZero;
-    }
-
-    public void setReasonable(boolean reasonable) {
-        this.reasonable = reasonable;
     }
 
     public void setDefaultPage(int defaultPage) {
@@ -842,10 +815,6 @@ public class PaginationInterceptor implements Interceptor {
 
     public boolean isSkipQueryIfCountEqualsZero() {
         return skipQueryIfCountEqualsZero;
-    }
-
-    public boolean isReasonable() {
-        return reasonable;
     }
 
     public int getDefaultPage() {

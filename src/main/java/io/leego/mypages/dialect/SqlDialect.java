@@ -1,27 +1,28 @@
 package io.leego.mypages.dialect;
 
-import io.leego.mypages.exception.SqlDialectException;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.Map;
 
 /**
  * @author Yihleego
  */
 public enum SqlDialect {
-    MYSQL("MySQL", MySQLDialect.class),
-    MARIADB("MariaDB", MySQLDialect.class),
-    SQLITE("SQLite", MySQLDialect.class),
-    TIDB("TiDB", MySQLDialect.class),
-
-    POSTGRESQL("PostgreSQL", PostgreSQLDialect.class),
-    HSQLDB("HSQLDB", PostgreSQLDialect.class),
-    H2("H2", PostgreSQLDialect.class),
-    PHOENIX("Phoenix", PostgreSQLDialect.class),
-
-    ORACLE("Oracle", OracleDialect.class),
     DB2("DB2", DB2Dialect.class),
-    INFORMIX("Informix", InformixDialect.class),
     DERBY("Derby", DerbyDialect.class),
-    SQL_SERVER("SQL Server", DerbyDialect.class),
-    HIVE("Apache Hive", HiveDialect.class);
+    H2("H2", PostgreSQLDialect.class),
+    HIVE("Apache Hive", DB2Dialect.class),
+    HSQLDB("HSQLDB", PostgreSQLDialect.class),
+    INFORMIX("Informix", InformixDialect.class),
+    MARIADB("MariaDB", MySQLDialect.class),
+    MYSQL("MySQL", MySQLDialect.class),
+    ORACLE("Oracle", OracleDialect.class),
+    PHOENIX("Phoenix", PostgreSQLDialect.class),
+    POSTGRESQL("PostgreSQL", PostgreSQLDialect.class),
+    SQLITE("SQLite", MySQLDialect.class),
+    SQLSERVER("SQL Server", DerbyDialect.class),
+    TIDB("TiDB", MySQLDialect.class),
+    ;
 
     private final String name;
     private final Class<? extends Dialect> dialectClass;
@@ -39,13 +40,26 @@ public enum SqlDialect {
         return dialectClass;
     }
 
-    public Dialect getDialect() {
-        try {
-            // Uses the constructor represented by the Constructor object to initialize a new instance
-            return dialectClass.getConstructor().newInstance();
-        } catch (Exception e) {
-            throw new SqlDialectException(e);
+    private static final Map<String, SqlDialect> map;
+
+    static {
+        Map<String, SqlDialect> store = new HashMap<>(32);
+        for (SqlDialect e : values()) {
+            String lowerCaseDialectName = e.getName().toLowerCase();
+            String lowerCaseEnumName = e.name().toLowerCase();
+            store.put(lowerCaseDialectName, e);
+            if (!lowerCaseDialectName.equals(lowerCaseEnumName)) {
+                store.putIfAbsent(e.name().toLowerCase(), e);
+            }
         }
+        map = Collections.unmodifiableMap(store);
+    }
+
+    public static SqlDialect get(String name) {
+        if (name == null) {
+            return null;
+        }
+        return map.get(name);
     }
 
 }

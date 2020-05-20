@@ -8,7 +8,7 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
 /**
- * Enables pagination capability
+ * Enables pagination capability.
  * @author Yihleego
  */
 @Retention(RetentionPolicy.RUNTIME)
@@ -17,48 +17,33 @@ import java.lang.annotation.Target;
 @Inherited
 public @interface Pagination {
 
-    /** Default page number (One-based) */
+    /**
+     * Default page number (One-based).
+     * Replaces <code>page</code> with <code>defaultPage</code>
+     * if <code>defaultPage</code> is greater than 0 and <code>page</code> is invalid.
+     */
     int defaultPage() default -1;
 
-    /** Default page size */
+    /**
+     * Default page size.
+     * Replaces <code>size</code> with <code>defaultSize</code>
+     * if <code>defaultSize</code> is greater than 0 and <code>size</code> is invalid.
+     */
     int defaultSize() default -1;
 
-    /** Max page number (One-based) */
+    /**
+     * Max page number (One-based).
+     * Replaces <code>page</code> with <code>maxPage</code>
+     * if <code>maxPage</code> is greater than 0 and <code>page</code> is greater than <code>maxPage</code>
+     */
     int maxPage() default -1;
 
-    /** Max page size */
-    int maxSize() default -1;
-
     /**
-     * Replaces <code>page</code> with {@link #defaultPage}
-     * when following:<pre>
-     * 1.reasonable
-     * 2.{@link #defaultPage} is greater than 0
-     * 3.<code>page</code> is invalid
-     * </pre>
-     * <p>
-     * Replaces <code>size</code> with {@link #defaultSize}
-     * when following:<pre>
-     * 1.reasonable
-     * 2.{@link #defaultSize} is greater than 0
-     * 3.<code>size</code> is invalid
-     * </pre>
-     * <p>
-     * Replaces <code>page</code> with {@link #maxPage}
-     * when following:<pre>
-     * 1.reasonable
-     * 2.{@link #maxPage} is greater than 0
-     * 3.<code>page</code> is greater than {@link #maxPage}
-     * </pre>
-     * <p>
-     * Replaces <code>size</code> with {@link #maxSize}
-     * when following:<pre>
-     * 1.reasonable
-     * 2.{@link #maxSize} is greater than 0
-     * 3.<code>size</code> is greater than {@link #maxSize}
-     * </pre>
+     * Max page size.
+     * Replaces <code>size</code> with <code>maxSize</code>
+     * if <code>maxSize</code> is greater than 0 and <code>size</code> is greater than <code>maxSize</code>
      */
-    boolean reasonable() default false;
+    int maxSize() default -1;
 
     /** The counting of the column. The default value is "*". */
     String countColumn() default "";

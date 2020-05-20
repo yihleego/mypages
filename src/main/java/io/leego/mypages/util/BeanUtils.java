@@ -281,12 +281,7 @@ public final class BeanUtils {
      * @throws InvocationTargetException if the underlying method throws an exception.
      */
     public static Map<Object, Object> readAll(Object o) throws IntrospectionException, IllegalAccessException, InvocationTargetException {
-        PropertyDescriptor[] descriptors = getPropertyDescriptors(o.getClass());
-        Map<Object, Object> map = new HashMap<>();
-        for (PropertyDescriptor descriptor : descriptors) {
-            map.put(descriptor.getName(), read(o, descriptor.getReadMethod()));
-        }
-        return map;
+        return readAll(o, HashMap::new);
     }
 
     /**
@@ -298,9 +293,9 @@ public final class BeanUtils {
      * @throws IllegalAccessException    if the method is not accessible.
      * @throws InvocationTargetException if the underlying method throws an exception.
      */
-    public static <M extends Map<Object, Object>> M readAll(Object o, Supplier<M> mapFactory) throws IllegalAccessException, InvocationTargetException, IntrospectionException {
+    public static Map<Object, Object> readAll(Object o, Supplier<Map<Object, Object>> mapFactory) throws IllegalAccessException, InvocationTargetException, IntrospectionException {
         PropertyDescriptor[] descriptors = getPropertyDescriptors(o.getClass());
-        M map = mapFactory.get();
+        Map<Object, Object> map = mapFactory.get();
         for (PropertyDescriptor descriptor : descriptors) {
             map.put(descriptor.getName(), read(o, descriptor.getReadMethod()));
         }

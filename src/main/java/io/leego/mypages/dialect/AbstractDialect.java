@@ -3,6 +3,7 @@ package io.leego.mypages.dialect;
 import io.leego.mypages.util.BeanUtils;
 import io.leego.mypages.util.PaginationParam;
 import io.leego.mypages.util.ReflectUtils;
+import io.leego.mypages.util.SqlUtils;
 import org.apache.ibatis.cache.CacheKey;
 import org.apache.ibatis.mapping.BoundSql;
 import org.apache.ibatis.mapping.MappedStatement;
@@ -17,7 +18,9 @@ import java.util.Map;
  * @author Yihleego
  */
 public abstract class AbstractDialect implements Dialect {
-    protected static final String ASTERISK = "*";
+    protected static final String TEMP_TABLE_ALIAS = "MP_TT";
+    protected static final String PAGING_TABLE_ALIAS = "MP_PT";
+    protected static final String ROW_NUMBER_ALIAS = "MP_IGNORED_RN";
     protected static final String PAGINATION_PARAM = "MP_PAGINATION_PARAM";
     protected static final String PARAMETER_MAPPINGS = "parameterMappings";
 
@@ -28,19 +31,20 @@ public abstract class AbstractDialect implements Dialect {
 
     @Override
     public String getCountSql(String sql) {
-        return "SELECT COUNT(" + ASTERISK + ") FROM (" + sql + ") MP_TCT";
+        return SqlUtils.toCountSql(sql);
     }
 
     @Override
     public String getCountSql(String sql, String column) {
-        if (column == null || column.isEmpty()) {
-            return getCountSql(sql);
-        }
-        return "SELECT COUNT(" + column + ") FROM (" + sql + ") MP_TCT";
+        return SqlUtils.toCountSql(sql, column);
     }
 
     @Override
     public Object processParams(MappedStatement ms, Object parameter, BoundSql boundSql, CacheKey pageKey, PaginationParam param) throws Exception {
+        Object[] params = getPagingParams(param);
+        if (params == null || params.length == 0) {
+            return parameter;
+        }
         Map<Object, Object> paramMap;
         if (parameter == null) {
             paramMap = new HashMap<>();
@@ -60,17 +64,20 @@ public abstract class AbstractDialect implements Dialect {
             // Prevent unmodifiable list object from throwing exceptions.
             parameterMappings = new ArrayList<>(boundSql.getParameterMappings());
         }
-
         // Append paging parameters.
-        Object[] params = getPagingParams(param);
-        for (int i = 0; i < params.length; i++) {
-            String property = PAGINATION_PARAM + i;
-            paramMap.put(property, params[i]);
-            pageKey.update(params[i]);
-            parameterMappings.add(new ParameterMapping.Builder(ms.getConfiguration(), property, params[i].getClass()).build());
+        int suffix = 0;
+        for (Object value : params) {
+            String property = PAGINATION_PARAM + (suffix++);
+            // Prevent replacing original value.
+            while (paramMap.containsKey(property)) {
+                property = PAGINATION_PARAM + (suffix++);
+            }
+            paramMap.put(property, value);
+            pageKey.update(value);
+            parameterMappings.add(new ParameterMapping.Builder(ms.getConfiguration(), property, value.getClass()).build());
         }
         if (parameterMappings != boundSql.getParameterMappings()) {
-            // Overwrite the value of the parameterMappings, [ATTENTION] There is no "setParameterMappings" method.
+            // Overwrite the value of the parameterMappings.
             ReflectUtils.setFieldValue(boundSql, PARAMETER_MAPPINGS, parameterMappings, true);
         }
         return paramMap;

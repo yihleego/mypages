@@ -6,7 +6,6 @@ import java.lang.reflect.Method;
  * @author Yihleego
  */
 public class PaginationUnrefinedParam {
-    private boolean reasonable;
     private int defaultPage;
     private int defaultSize;
     private int maxPage;
@@ -22,8 +21,7 @@ public class PaginationUnrefinedParam {
     public PaginationUnrefinedParam() {
     }
 
-    public PaginationUnrefinedParam(boolean reasonable, int defaultPage, int defaultSize, int maxPage, int maxSize, String countColumn, boolean mapType) {
-        this.reasonable = reasonable;
+    public PaginationUnrefinedParam(int defaultPage, int defaultSize, int maxPage, int maxSize, String countColumn, boolean mapType) {
         this.defaultPage = defaultPage;
         this.defaultSize = defaultSize;
         this.maxPage = maxPage;
@@ -32,8 +30,7 @@ public class PaginationUnrefinedParam {
         this.mapType = mapType;
     }
 
-    public PaginationUnrefinedParam(boolean reasonable, int defaultPage, int defaultSize, int maxPage, int maxSize, String countColumn, Method pageReadMethod, Method sizeReadMethod, Method offsetReadMethod, Method rowsReadMethod, Method countColumnReadMethod, boolean mapType) {
-        this.reasonable = reasonable;
+    public PaginationUnrefinedParam(int defaultPage, int defaultSize, int maxPage, int maxSize, String countColumn, Method pageReadMethod, Method sizeReadMethod, Method offsetReadMethod, Method rowsReadMethod, Method countColumnReadMethod, boolean mapType) {
         this.defaultPage = defaultPage;
         this.defaultSize = defaultSize;
         this.maxPage = maxPage;
@@ -45,14 +42,6 @@ public class PaginationUnrefinedParam {
         this.rowsReadMethod = rowsReadMethod;
         this.countColumnReadMethod = countColumnReadMethod;
         this.mapType = mapType;
-    }
-
-    public boolean isReasonable() {
-        return reasonable;
-    }
-
-    public void setReasonable(boolean reasonable) {
-        this.reasonable = reasonable;
     }
 
     public int getDefaultPage() {

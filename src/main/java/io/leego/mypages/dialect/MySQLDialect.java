@@ -9,7 +9,7 @@ public class MySQLDialect extends AbstractDialect {
 
     @Override
     public String getPagingSql(String sql) {
-        return sql + " LIMIT ?,?";
+        return sql + " LIMIT ?, ?";
     }
 
     @Override

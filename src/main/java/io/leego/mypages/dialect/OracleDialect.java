@@ -9,9 +9,9 @@ public class OracleDialect extends AbstractDialect {
 
     @Override
     public String getPagingSql(String sql) {
-        return "SELECT * " +
-                "FROM (SELECT MP_TPT.*, ROWNUM MP_ROW_ID FROM (" + sql + ") MP_TPT WHERE ROWNUM <= ?) " +
-                "WHERE MP_ROW_ID > ?";
+        return "SELECT *" +
+                " FROM (SELECT " + TEMP_TABLE_ALIAS + ".*, ROWNUM AS " + ROW_NUMBER_ALIAS + " FROM (" + sql + ") " + TEMP_TABLE_ALIAS + " WHERE ROWNUM <= ?) " + PAGING_TABLE_ALIAS +
+                " WHERE " + ROW_NUMBER_ALIAS + " > ?";
     }
 
     @Override
