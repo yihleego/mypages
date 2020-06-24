@@ -15,8 +15,10 @@ public class Search implements Serializable {
     protected Integer offset;
     /** The rows of the page to be returned */
     protected Integer rows;
-    /** Uses specify a mapped column for counting property or field */
+    /** Uses a specified mapped column for counting property or field */
     protected String countColumn;
+    /** Uses a specified method to count */
+    protected String countMethodName;
 
     public Search() {
     }
@@ -32,6 +34,15 @@ public class Search implements Serializable {
         this.offset = offset;
         this.rows = rows;
         this.countColumn = countColumn;
+    }
+
+    public Search(Integer page, Integer size, Integer offset, Integer rows, String countColumn, String countMethodName) {
+        this.page = page;
+        this.size = size;
+        this.offset = offset;
+        this.rows = rows;
+        this.countColumn = countColumn;
+        this.countMethodName = countMethodName;
     }
 
     public Integer getPage() {
@@ -74,4 +85,11 @@ public class Search implements Serializable {
         this.countColumn = countColumn;
     }
 
+    public String getCountMethodName() {
+        return countMethodName;
+    }
+
+    public void setCountMethodName(String countMethodName) {
+        this.countMethodName = countMethodName;
+    }
 }

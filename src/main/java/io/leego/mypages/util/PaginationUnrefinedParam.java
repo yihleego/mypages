@@ -16,6 +16,7 @@ public class PaginationUnrefinedParam {
     private Method offsetReadMethod;
     private Method rowsReadMethod;
     private Method countColumnReadMethod;
+    private Method countMethodNameReadMethod;
     private boolean mapType;
 
     public PaginationUnrefinedParam() {
@@ -30,7 +31,7 @@ public class PaginationUnrefinedParam {
         this.mapType = mapType;
     }
 
-    public PaginationUnrefinedParam(int defaultPage, int defaultSize, int maxPage, int maxSize, String countColumn, Method pageReadMethod, Method sizeReadMethod, Method offsetReadMethod, Method rowsReadMethod, Method countColumnReadMethod, boolean mapType) {
+    public PaginationUnrefinedParam(int defaultPage, int defaultSize, int maxPage, int maxSize, String countColumn, Method pageReadMethod, Method sizeReadMethod, Method offsetReadMethod, Method rowsReadMethod, Method countColumnReadMethod, Method countMethodNameReadMethod, boolean mapType) {
         this.defaultPage = defaultPage;
         this.defaultSize = defaultSize;
         this.maxPage = maxPage;
@@ -41,6 +42,7 @@ public class PaginationUnrefinedParam {
         this.offsetReadMethod = offsetReadMethod;
         this.rowsReadMethod = rowsReadMethod;
         this.countColumnReadMethod = countColumnReadMethod;
+        this.countMethodNameReadMethod = countMethodNameReadMethod;
         this.mapType = mapType;
     }
 
@@ -122,6 +124,14 @@ public class PaginationUnrefinedParam {
 
     public void setCountColumnReadMethod(Method countColumnReadMethod) {
         this.countColumnReadMethod = countColumnReadMethod;
+    }
+
+    public Method getCountMethodNameReadMethod() {
+        return countMethodNameReadMethod;
+    }
+
+    public void setCountMethodNameReadMethod(Method countMethodNameReadMethod) {
+        this.countMethodNameReadMethod = countMethodNameReadMethod;
     }
 
     public boolean isMapType() {

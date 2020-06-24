@@ -8,7 +8,7 @@ Please make sure that Java version is 1.8 and above.
 
 ```xml
 <properties>
-    <mypages.version>0.3.0</mypages.version>
+    <mypages.version>0.3.1</mypages.version>
 </properties>
 
 <dependency>
@@ -21,7 +21,7 @@ Please make sure that Java version is 1.8 and above.
 ## Gradle Dependency
 
 ```xml
-implementation 'io.leego:mypages:0.3.0'
+implementation 'io.leego:mypages:0.3.1'
 ```
 
 # Quick Setup
@@ -207,6 +207,73 @@ public class SearchDTO extends io.leego.mypages.util.Search {
     private String name;
     /* getter setter */
 }
+```
+
+# Uses custom count method
+
+Assume you have a mapper interface defined like the following:
+
+```java
+public interface FooMapper {
+    @Select("SELECT * FROM foo")
+    List<Foo> list(SearchDTO search);
+
+    @Select("SELECT COUNT(*) FROM foo")
+    long count(SearchDTO search);
+}
+```
+
+## 1.Annotations
+
+```java
+@Pagination
+public class SearchDTO {
+    @Page
+    private Integer page;
+    @Size
+    private Integer size;
+    @CountMethodName
+    private String countMethodName;
+    /* getter setter */
+}
+```
+
+Setting custom count method name:
+
+```java
+import io.leego.mypages.util.Page;
+
+public class FooServiceImpl implements FooService {
+    @Autowired
+    private final FooMapper fooMapper;
+
+    public Page<Foo> search(SearchDTO search) {
+        // Specifies the count method name in the mapper.
+        search.setCountMethodName("count");
+        return Page.of(fooMapper.list(search));
+    }
+}
+```
+
+## 2.Configure PaginationInterceptor
+
+Define a class with paging parameters, and configure parameters field names.
+
+```java
+public class SearchDTO {
+    private Integer page;
+    private Integer size;
+    private String countMethodName;
+    /* getter setter */
+}
+```
+
+```java
+// Specifies the count method name.
+PaginationInterceptor pagingPlugin = new PaginationInterceptor()
+    .sqlDialect(SqlDialect.MYSQL)
+    .pagingFields("page", "size")
+    .specifyCountMethod("countMethodName");
 ```
 
 # Reasonable

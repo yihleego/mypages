@@ -10,7 +10,6 @@ import com.alibaba.druid.sql.ast.statement.SQLSelectQuery;
 import com.alibaba.druid.sql.ast.statement.SQLSelectQueryBlock;
 import com.alibaba.druid.sql.ast.statement.SQLSelectStatement;
 import com.alibaba.druid.util.JdbcConstants;
-import io.leego.mypages.dialect.SqlDialect;
 import io.leego.mypages.exception.PaginationException;
 
 import java.util.Arrays;
@@ -25,10 +24,10 @@ import java.util.stream.Collectors;
  */
 public final class SqlUtils {
     public static final String ASTERISK = "*";
-    public static final String TEMP_COUNT_TABLE_ALIAS = "MP_TCT";
+    private static final String DEFAULT_TABLE_ALIAS = "DTA";
     private static final SQLExpr COUNT_EXPR = SQLUtils.toSQLExpr("COUNT(*)");
     /** Aggregate functions */
-    private static final String[] AGGREGATE_FUNCTIONS = {
+    private static final String[] AGGREGATE_FUNCTION_NAMES = {
             "avg",
             "binary_checksum", "bit_and", "bit_or", "bit_xor",
             "checksum", "checksum_agg", "count", "count_big",
@@ -38,12 +37,13 @@ public final class SqlUtils {
             "max", "median", "min",
             "rank",
             "std", "stddev", "stddev_pop", "stddev_samp", "stdev", "stdevp", "sum",
-            "var", "var_pop", "var_samp", "variance", "varp",};
+            "var", "var_pop", "var_samp", "variance", "varp",
+    };
     private static final Map<Character, Set<String>> AGGREGATE_FUNCTION_MAP;
 
     static {
         AGGREGATE_FUNCTION_MAP = Collections.unmodifiableMap(
-                Arrays.stream(AGGREGATE_FUNCTIONS)
+                Arrays.stream(AGGREGATE_FUNCTION_NAMES)
                         .map(o -> o.toLowerCase() + "(")
                         .collect(Collectors.groupingBy(o -> o.charAt(0), Collectors.toSet())));
     }
@@ -51,11 +51,11 @@ public final class SqlUtils {
     private SqlUtils() {
     }
 
-    public static String toCountSql(String sql) {
-        return toCountSql(sql, null);
+    public static String toCountSql(String sql, String alias) {
+        return toCountSql(sql, null, alias);
     }
 
-    public static String toCountSql(String sql, String column) {
+    public static String toCountSql(String sql, String column, String alias) {
         try {
             // Ignore the SQL dialect.
             SQLStatement sqlStatement = SQLUtils.parseSingleStatement(sql, JdbcConstants.MYSQL);
@@ -65,22 +65,22 @@ public final class SqlUtils {
             SQLSelectStatement sqlSelectStatement = (SQLSelectStatement) sqlStatement;
             SQLSelectQuery sqlSelectQuery = sqlSelectStatement.getSelect().getQuery();
             if (!(sqlSelectQuery instanceof SQLSelectQueryBlock)) {
-                return toSimpleCountSql(sql, column);
+                return toSimpleCountSql(sql, column, alias);
             }
             // Return simple count SQL if it is a distinct query.
             SQLSelectQueryBlock sqlSelectQueryBlock = (SQLSelectQueryBlock) sqlSelectQuery;
             if (sqlSelectQueryBlock.isDistinct()) {
-                return toSimpleCountSql(sql, column);
+                return toSimpleCountSql(sql, column, alias);
             }
             // Return simple count SQL if there is "GROUP BY".
             SQLSelectGroupByClause sqlSelectGroupByClause = sqlSelectQueryBlock.getGroupBy();
             if (sqlSelectGroupByClause != null) {
-                return toSimpleCountSql(sql, column);
+                return toSimpleCountSql(sql, column, alias);
             }
             // Return simple count SQL if there are aggregate functions.
             List<SQLSelectItem> sqlSelectItems = sqlSelectQueryBlock.getSelectList();
             if (hasAnyAggregate(sqlSelectItems)) {
-                return toSimpleCountSql(sql, column);
+                return toSimpleCountSql(sql, column, alias);
             }
             if (sqlSelectItems != null && !sqlSelectItems.isEmpty()) {
                 // Remove select items.
@@ -92,64 +92,28 @@ public final class SqlUtils {
             SQLUtils.addSelectItem(sqlStatement, buildCountExpr(column), null, true);
             return sqlStatement.toString();
         } catch (Exception ignored) {
-            return toSimpleCountSql(sql, column);
+            return toSimpleCountSql(sql, column, alias);
         }
     }
 
-    public static String toSimpleCountSql(String sql) {
-        return "SELECT COUNT(" + ASTERISK + ") FROM (" + sql + ") " + TEMP_COUNT_TABLE_ALIAS;
+    public static String toSimpleCountSql(String sql, String alias) {
+        return "SELECT COUNT(" + ASTERISK + ") FROM (" + sql + ") "
+                + (StringUtils.isNotBlank(alias) ? alias : DEFAULT_TABLE_ALIAS);
     }
 
-    public static String toSimpleCountSql(String sql, String column) {
-        if (column == null || column.isEmpty()) {
+    public static String toSimpleCountSql(String sql, String column, String alias) {
+        if (StringUtils.isBlank(column)) {
             column = ASTERISK;
         }
-        return "SELECT COUNT(" + column + ") FROM (" + sql + ") " + TEMP_COUNT_TABLE_ALIAS;
+        return "SELECT COUNT(" + column + ") FROM (" + sql + ") "
+                + (StringUtils.isNotBlank(alias) ? alias : DEFAULT_TABLE_ALIAS);
     }
 
     public static SQLExpr buildCountExpr(String column) {
-        if (column == null || column.isEmpty()) {
+        if (StringUtils.isBlank(column) || column.equals(ASTERISK)) {
             return COUNT_EXPR;
         }
         return SQLUtils.toSQLExpr("COUNT(" + column + ")");
-    }
-
-    public static String getDbType(SqlDialect sqlDialect) {
-        if (sqlDialect == null) {
-            return JdbcConstants.MYSQL;
-        }
-        switch (sqlDialect) {
-            case MYSQL:
-                return JdbcConstants.MYSQL;
-            case MARIADB:
-                return JdbcConstants.MARIADB;
-            case SQLITE:
-                return JdbcConstants.SQLITE;
-            case TIDB:
-                return JdbcConstants.MYSQL;
-            case POSTGRESQL:
-                return JdbcConstants.POSTGRESQL;
-            case HSQLDB:
-                return JdbcConstants.HSQL;
-            case H2:
-                return JdbcConstants.H2;
-            case PHOENIX:
-                return JdbcConstants.PHOENIX;
-            case ORACLE:
-                return JdbcConstants.ORACLE;
-            case DB2:
-                return JdbcConstants.DB2;
-            case INFORMIX:
-                return JdbcConstants.INFORMIX;
-            case DERBY:
-                return JdbcConstants.DERBY;
-            case SQLSERVER:
-                return JdbcConstants.SQL_SERVER;
-            case HIVE:
-                return JdbcConstants.HIVE;
-            default:
-                return JdbcConstants.MYSQL;
-        }
     }
 
     public static boolean hasAnyAggregate(List<SQLSelectItem> sqlSelectItems) {

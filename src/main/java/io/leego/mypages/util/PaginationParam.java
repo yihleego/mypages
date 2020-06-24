@@ -12,20 +12,23 @@ public class PaginationParam {
     protected Integer offset;
     /** The rows of the page to be returned */
     protected Integer rows;
-    /** Uses specify a mapped column for counting property or field */
+    /** Uses a specified mapped column for counting property or field */
     protected String countColumn;
-    /** Is pageable */
+    /** Uses a specified method to count */
+    protected String countMethodName;
+    /** Whether to paging */
     private boolean pageable;
 
     public PaginationParam() {
     }
 
-    public PaginationParam(Integer page, Integer size, Integer offset, Integer rows, String countColumn, boolean pageable) {
+    public PaginationParam(Integer page, Integer size, Integer offset, Integer rows, String countColumn, String countMethodName, boolean pageable) {
         this.page = page;
         this.size = size;
         this.offset = offset;
         this.rows = rows;
         this.countColumn = countColumn;
+        this.countMethodName = countMethodName;
         this.pageable = pageable;
     }
 
@@ -71,6 +74,14 @@ public class PaginationParam {
 
     public void setCountColumn(String countColumn) {
         this.countColumn = countColumn;
+    }
+
+    public String getCountMethodName() {
+        return countMethodName;
+    }
+
+    public void setCountMethodName(String countMethodName) {
+        this.countMethodName = countMethodName;
     }
 
     public boolean isPageable() {

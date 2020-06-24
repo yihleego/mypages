@@ -8,12 +8,12 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
 /**
- * Uses a specified mapped column for counting property or field. The default value is "*".
+ * Uses a specified method to count.
  * @author Yihleego
  */
 @Retention(RetentionPolicy.RUNTIME)
 @Target({ElementType.FIELD, ElementType.METHOD})
 @Documented
 @Inherited
-public @interface CountColumn {
+public @interface CountMethodName {
 }

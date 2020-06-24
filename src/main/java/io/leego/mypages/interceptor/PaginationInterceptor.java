@@ -1,6 +1,7 @@
 package io.leego.mypages.interceptor;
 
 import io.leego.mypages.annotation.CountColumn;
+import io.leego.mypages.annotation.CountMethodName;
 import io.leego.mypages.annotation.DisableCount;
 import io.leego.mypages.annotation.DisablePagination;
 import io.leego.mypages.annotation.Offset;
@@ -74,12 +75,16 @@ public class PaginationInterceptor implements Interceptor {
     private String rowsFieldName;
     /** Parameter count column field name. */
     private String countColumnFieldName;
+    /** Parameter count method name field name. */
+    private String countMethodNameFieldName;
     /** Parameter enable count field name. */
     private String enableCountFieldName;
     /** Whether to obtain <code>page</code>, <code>size</code>, <code>offset</code>, <code>rows</code> values from fields of parameter. */
     private boolean obtainParamsFromFields = false;
     /** Whether to skip query if total value equals zero. */
     private boolean skipQueryIfCountEqualsZero = true;
+    /** Whether to keep counting if the specified count method is missing. */
+    private boolean keepCountingIfCountMethodIsMissing = true;
     /** Replaces <code>page</code> with <code>defaultPage</code> if <code>page</code> is invalid. */
     private int defaultPage = -1;
     /** Replaces <code>size</code> with <code>defaultSize</code> if <code>size</code> is invalid. */
@@ -132,7 +137,7 @@ public class PaginationInterceptor implements Interceptor {
         }
         Long total = null;
         if (isCounting(parameter)) {
-            total = count(executor, ms, boundSql, parameter, resultHandler, param.getCountColumn());
+            total = count(executor, ms, boundSql, parameter, resultHandler, param.getCountColumn(), param.getCountMethodName());
             if (total == 0 && skipQueryIfCountEqualsZero) {
                 return PaginationCollectionFactory.build(returnType, total, param.getPage(), param.getSize());
             }
@@ -154,15 +159,48 @@ public class PaginationInterceptor implements Interceptor {
     /**
      * Returns count quantity.
      */
-    private long count(Executor executor, MappedStatement ms, BoundSql boundSql, Object parameter, ResultHandler resultHandler, String countColumn) throws SQLException {
-        String countMsId = ms.getId() + COUNT_SUFFIX;
-        MappedStatement countMs = countMsMap.computeIfAbsent(countMsId, id -> newCountMappedStatement(ms, id));
+    private Long count(Executor executor, MappedStatement ms, BoundSql boundSql, Object parameter, ResultHandler resultHandler, String countColumn, String countMsId) throws SQLException {
+        Object value;
+        if (StringUtils.isEmpty(countMsId)) {
+            value = countByGenerated(executor, ms, boundSql, parameter, resultHandler, countColumn);
+        } else {
+            value = countBySpecified(executor, ms, boundSql, parameter, resultHandler, countColumn, countMsId);
+        }
+        return value != null ? parseLong(((List) value).get(0)) : 0L;
+    }
+
+    /**
+     * Returns count quantity by generating a dynamic SQL.
+     */
+    private Object countByGenerated(Executor executor, MappedStatement ms, BoundSql boundSql, Object parameter, ResultHandler resultHandler, String countColumn) throws SQLException {
+        MappedStatement countMs = countMsMap.computeIfAbsent(ms.getId() + COUNT_SUFFIX, id -> newCountMappedStatement(ms, id));
         CacheKey countKey = executor.createCacheKey(countMs, parameter, RowBounds.DEFAULT, boundSql);
         String originSql = boundSql.getSql();
         String countSql = dialect.getCountSql(originSql, countColumn);
         BoundSql countBoundSql = newBoundSql(ms, boundSql, countSql);
-        Object result = executor.query(countMs, parameter, RowBounds.DEFAULT, resultHandler, countKey, countBoundSql);
-        return result != null ? parseLong(((List) result).get(0)) : 0;
+        return executor.query(countMs, parameter, RowBounds.DEFAULT, resultHandler, countKey, countBoundSql);
+    }
+
+    /**
+     * Returns count quantity by the specified count method.
+     */
+    private Object countBySpecified(Executor executor, MappedStatement ms, BoundSql boundSql, Object parameter, ResultHandler resultHandler, String countColumn, String countMsId) throws SQLException {
+        MappedStatement countMs = null;
+        Throwable cause = null;
+        try {
+            countMs = ms.getConfiguration().getMappedStatement(countMsId, false);
+        } catch (Throwable t) {
+            cause = t;
+        }
+        if (countMs != null) {
+            CacheKey countKey = executor.createCacheKey(countMs, parameter, RowBounds.DEFAULT, ms.getBoundSql(parameter));
+            BoundSql countBoundSql = countMs.getBoundSql(parameter);
+            return executor.query(countMs, parameter, RowBounds.DEFAULT, resultHandler, countKey, countBoundSql);
+        }
+        if (keepCountingIfCountMethodIsMissing) {
+            return countByGenerated(executor, ms, boundSql, parameter, resultHandler, countColumn);
+        }
+        throw new PaginationException("Counting method named \"" + countMsId + "\" is missing.", cause);
     }
 
     /**
@@ -283,6 +321,7 @@ public class PaginationInterceptor implements Interceptor {
         int maxPage = unrefinedParam.getMaxPage();
         int maxSize = unrefinedParam.getMaxSize();
         String countColumn;
+        String countMethodName;
         Integer page;
         Integer size;
         Integer offset;
@@ -294,6 +333,7 @@ public class PaginationInterceptor implements Interceptor {
             offset = search.getOffset();
             rows = search.getRows();
             countColumn = search.getCountColumn();
+            countMethodName = search.getCountMethodName();
         } else if (unrefinedParam.isMapType()) {
             Map parameterMap = (Map) parameter;
             page = parseInteger(getMapValue(parameterMap, this.pageFieldName));
@@ -301,12 +341,14 @@ public class PaginationInterceptor implements Interceptor {
             offset = parseInteger(getMapValue(parameterMap, this.offsetFieldName));
             rows = parseInteger(getMapValue(parameterMap, this.rowsFieldName));
             countColumn = parseString(getMapValue(parameterMap, this.countColumnFieldName));
+            countMethodName = parseString(getMapValue(parameterMap, this.countMethodNameFieldName));
         } else {
             page = invokeInteger(parameter, unrefinedParam.getPageReadMethod());
             size = invokeInteger(parameter, unrefinedParam.getSizeReadMethod());
             offset = invokeInteger(parameter, unrefinedParam.getOffsetReadMethod());
             rows = invokeInteger(parameter, unrefinedParam.getRowsReadMethod());
             countColumn = invokeString(parameter, unrefinedParam.getCountColumnReadMethod());
+            countMethodName = invokeString(parameter, unrefinedParam.getCountMethodNameReadMethod());
         }
         if (StringUtils.isEmpty(countColumn)
                 && StringUtils.isNotEmpty(unrefinedParam.getCountColumn())) {
@@ -353,7 +395,7 @@ public class PaginationInterceptor implements Interceptor {
         } else {
             return new PaginationParam(false);
         }
-        return new PaginationParam(page, size, offset, rows, countColumn, true);
+        return new PaginationParam(page, size, offset, rows, countColumn, countMethodName, true);
     }
 
     /**
@@ -372,6 +414,7 @@ public class PaginationInterceptor implements Interceptor {
         Method offsetReadMethod = null;
         Method rowsReadMethod = null;
         Method countColumnReadMethod = null;
+        Method countMethodNameReadMethod = null;
         Pagination pagination = ReflectUtils.getAnnotation(parameter, Pagination.class);
         if (pagination != null) {
             defaultPage = pagination.defaultPage() > 0 ? pagination.defaultPage() : this.defaultPage;
@@ -425,6 +468,8 @@ public class PaginationInterceptor implements Interceptor {
                         rowsReadMethod = pd.getReadMethod();
                     } else if (Objects.equals(this.countColumnFieldName, pd.getName())) {
                         countColumnReadMethod = pd.getReadMethod();
+                    } else if (Objects.equals(this.countMethodNameFieldName, pd.getName())) {
+                        countMethodNameReadMethod = pd.getReadMethod();
                     }
                 }
             }
@@ -451,6 +496,8 @@ public class PaginationInterceptor implements Interceptor {
                         rowsReadMethod = BeanUtils.getReadMethod(field);
                     } else if (annotation instanceof CountColumn) {
                         countColumnReadMethod = BeanUtils.getReadMethod(field);
+                    } else if (annotation instanceof CountMethodName) {
+                        countMethodNameReadMethod = BeanUtils.getReadMethod(field);
                     }
                 } catch (IntrospectionException ignored) {
                     // ignored
@@ -478,6 +525,8 @@ public class PaginationInterceptor implements Interceptor {
                     rowsReadMethod = method;
                 } else if (annotation instanceof CountColumn) {
                     countColumnReadMethod = method;
+                } else if (annotation instanceof CountMethodName) {
+                    countMethodNameReadMethod = method;
                 }
             }
         }
@@ -492,6 +541,7 @@ public class PaginationInterceptor implements Interceptor {
                 offsetReadMethod,
                 rowsReadMethod,
                 countColumnReadMethod,
+                countMethodNameReadMethod,
                 false);
     }
 
@@ -677,6 +727,17 @@ public class PaginationInterceptor implements Interceptor {
         return this;
     }
 
+    public PaginationInterceptor specifyCountMethod(String countMethodNameFieldName) {
+        this.countMethodNameFieldName = countMethodNameFieldName;
+        return this;
+    }
+
+    public PaginationInterceptor specifyCountMethod(String countMethodNameFieldName, boolean keepCountingIfCountMethodIsMissing) {
+        this.countMethodNameFieldName = countMethodNameFieldName;
+        this.keepCountingIfCountMethodIsMissing = keepCountingIfCountMethodIsMissing;
+        return this;
+    }
+
     public PaginationInterceptor enableCountField(String enableCountFieldName) {
         this.enableCountFieldName = enableCountFieldName;
         return this;
@@ -684,6 +745,11 @@ public class PaginationInterceptor implements Interceptor {
 
     public PaginationInterceptor skipQueryIfCountEqualsZero(boolean skipQueryIfCountEqualsZero) {
         this.skipQueryIfCountEqualsZero = skipQueryIfCountEqualsZero;
+        return this;
+    }
+
+    public PaginationInterceptor keepCountingIfCountMethodIsMissing(boolean keepCountingIfCountMethodIsMissing) {
+        this.keepCountingIfCountMethodIsMissing = keepCountingIfCountMethodIsMissing;
         return this;
     }
 
@@ -744,6 +810,10 @@ public class PaginationInterceptor implements Interceptor {
         this.countColumnFieldName = countColumnFieldName;
     }
 
+    public void setCountMethodNameFieldName(String countMethodNameFieldName) {
+        this.countMethodNameFieldName = countMethodNameFieldName;
+    }
+
     public void setEnableCountFieldName(String enableCountFieldName) {
         this.enableCountFieldName = enableCountFieldName;
     }
@@ -754,6 +824,10 @@ public class PaginationInterceptor implements Interceptor {
 
     public void setSkipQueryIfCountEqualsZero(boolean skipQueryIfCountEqualsZero) {
         this.skipQueryIfCountEqualsZero = skipQueryIfCountEqualsZero;
+    }
+
+    public void setKeepCountingIfCountMethodIsMissing(boolean keepCountingIfCountMethodIsMissing) {
+        this.keepCountingIfCountMethodIsMissing = keepCountingIfCountMethodIsMissing;
     }
 
     public void setDefaultPage(int defaultPage) {
@@ -805,6 +879,10 @@ public class PaginationInterceptor implements Interceptor {
         return countColumnFieldName;
     }
 
+    public String getCountMethodNameFieldName() {
+        return countColumnFieldName;
+    }
+
     public String getEnableCountFieldName() {
         return enableCountFieldName;
     }
@@ -815,6 +893,10 @@ public class PaginationInterceptor implements Interceptor {
 
     public boolean isSkipQueryIfCountEqualsZero() {
         return skipQueryIfCountEqualsZero;
+    }
+
+    public boolean isKeepCountingIfCountMethodIsMissing() {
+        return keepCountingIfCountMethodIsMissing;
     }
 
     public int getDefaultPage() {

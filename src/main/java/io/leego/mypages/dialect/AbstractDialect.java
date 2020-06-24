@@ -18,8 +18,9 @@ import java.util.Map;
  * @author Yihleego
  */
 public abstract class AbstractDialect implements Dialect {
-    protected static final String TEMP_TABLE_ALIAS = "MP_TT";
-    protected static final String PAGING_TABLE_ALIAS = "MP_PT";
+    protected static final String TEMP_TABLE_ALIAS = "MP_TTA";
+    protected static final String PAGING_TABLE_ALIAS = "MP_PTA";
+    protected static final String COUNTING_TABLE_ALIAS = "MP_CTA";
     protected static final String ROW_NUMBER_ALIAS = "MP_IGNORED_RN";
     protected static final String PAGINATION_PARAM = "MP_PAGINATION_PARAM";
     protected static final String PARAMETER_MAPPINGS = "parameterMappings";
@@ -31,12 +32,12 @@ public abstract class AbstractDialect implements Dialect {
 
     @Override
     public String getCountSql(String sql) {
-        return SqlUtils.toCountSql(sql);
+        return SqlUtils.toCountSql(sql, COUNTING_TABLE_ALIAS);
     }
 
     @Override
     public String getCountSql(String sql, String column) {
-        return SqlUtils.toCountSql(sql, column);
+        return SqlUtils.toCountSql(sql, column, COUNTING_TABLE_ALIAS);
     }
 
     @Override
