@@ -4,8 +4,7 @@ import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
-import java.util.Queue;
-import java.util.Set;
+import java.util.Objects;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -89,122 +88,88 @@ public class Page<T> implements Serializable {
         return new Page<>(list, total);
     }
 
-    public static <T> Page<T> empty() {
-        return new Page<>(new ArrayList<>(), 0, 0, 0L, 0L, false, false);
-    }
-
-
-    public static <T> Page<T> of(PaginationList<T> list) {
-        if (list == null) {
-            return empty();
-        }
-        return of(list, list.getPage(), list.getSize(), list.getTotal());
-    }
-
-    public static <T> Page<T> of(PaginationSet<T> set) {
-        if (set == null) {
-            return empty();
-        }
-        return of(toList(set), set.getPage(), set.getSize(), set.getTotal());
-    }
-
-    public static <T> Page<T> of(PaginationQueue<T> queue) {
-        if (queue == null) {
-            return empty();
-        }
-        return of(toList(queue), queue.getPage(), queue.getSize(), queue.getTotal());
-    }
-
-    public static <T> Page<T> of(Collection<T> collection) {
-        if (collection instanceof PaginationList) {
-            return of((PaginationList<T>) collection);
-        } else if (collection instanceof PaginationSet) {
-            return of((PaginationSet<T>) collection);
-        } else if (collection instanceof PaginationQueue) {
-            return of((PaginationQueue<T>) collection);
-        } else if (collection instanceof List) {
-            return new Page<>((List<T>) collection);
-        }
+    public static <T> Page<T> wrap(Collection<T> collection) {
         return new Page<>(toList(collection));
     }
 
-    public static <T> Page<T> of(List<T> list) {
-        if (list instanceof PaginationList) {
-            return of((PaginationList<T>) list);
-        }
+    public static <T> Page<T> wrap(List<T> list) {
         return new Page<>(list);
     }
 
-    public static <T> Page<T> of(Set<T> set) {
-        if (set instanceof PaginationSet) {
-            return of((PaginationSet<T>) set);
-        }
-        return new Page<>(toList(set));
+    public static <T> Page<T> empty() {
+        return new Page<>(new ArrayList<>());
     }
 
-    public static <T> Page<T> of(Queue<T> queue) {
-        if (queue instanceof PaginationQueue) {
-            return of((PaginationQueue<T>) queue);
-        }
-        return new Page<>(toList(queue));
-    }
-
-
-    public static <T, S> Page<T> of(PaginationList<S> list, Function<? super S, ? extends T> mapper) {
-        if (list == null) {
+    public static <T> Page<T> of(PaginationCollection<T> source) {
+        if (source == null) {
             return empty();
         }
-        return of(mapping(list, mapper), list.getPage(), list.getSize(), list.getTotal());
+        return of(toList(source), source.getPage(), source.getSize(), source.getTotal());
     }
 
-    public static <T, S> Page<T> of(PaginationSet<S> set, Function<? super S, ? extends T> mapper) {
-        if (set == null) {
+    public static <T> Page<T> of(Collection<T> source) {
+        if (source == null) {
             return empty();
         }
-        return of(mapping(set, mapper), set.getPage(), set.getSize(), set.getTotal());
+        if (source instanceof PaginationCollection) {
+            return of((PaginationCollection<T>) source);
+        }
+        return wrap(toList(source));
     }
 
-    public static <T, S> Page<T> of(PaginationQueue<S> queue, Function<? super S, ? extends T> mapper) {
-        if (queue == null) {
+    public static <T> Page<T> of(PaginationList<T> source) {
+        if (source == null) {
             return empty();
         }
-        return of(mapping(queue, mapper), queue.getPage(), queue.getSize(), queue.getTotal());
+        return of(source, source.getPage(), source.getSize(), source.getTotal());
     }
 
-    public static <T, S> Page<T> of(Collection<S> collection, Function<? super S, ? extends T> mapper) {
-        if (collection instanceof PaginationList) {
-            return of((PaginationList<S>) collection, mapper);
-        } else if (collection instanceof PaginationSet) {
-            return of((PaginationSet<S>) collection, mapper);
-        } else if (collection instanceof PaginationQueue) {
-            return of((PaginationQueue<S>) collection, mapper);
+    public static <T> Page<T> of(List<T> source) {
+        if (source == null) {
+            return empty();
         }
-        return new Page<>(mapping(collection, mapper));
-    }
-
-    public static <T, S> Page<T> of(List<S> list, Function<? super S, ? extends T> mapper) {
-        if (list instanceof PaginationList) {
-            return of((PaginationList<S>) list, mapper);
+        if (source instanceof PaginationList) {
+            return of((PaginationList<T>) source);
         }
-        return new Page<>(mapping(list, mapper));
+        return wrap(source);
     }
 
-    public static <T, S> Page<T> of(Set<S> set, Function<? super S, ? extends T> mapper) {
-        if (set instanceof PaginationSet) {
-            return of((PaginationSet<S>) set, mapper);
+    public static <T, S> Page<T> of(PaginationCollection<S> source, Function<? super S, ? extends T> mapper) {
+        if (source == null) {
+            return empty();
         }
-        return new Page<>(mapping(set, mapper));
+        return of(mapping(source, mapper), source.getPage(), source.getSize(), source.getTotal());
     }
 
-    public static <T, S> Page<T> of(Queue<S> queue, Function<? super S, ? extends T> mapper) {
-        if (queue instanceof PaginationQueue) {
-            return of((PaginationQueue<S>) queue, mapper);
+    public static <T, S> Page<T> of(Collection<S> source, Function<? super S, ? extends T> mapper) {
+        if (source == null) {
+            return empty();
         }
-        return new Page<>(mapping(queue, mapper));
+        if (source instanceof PaginationCollection) {
+            return of((PaginationCollection<S>) source, mapper);
+        }
+        return wrap(mapping(source, mapper));
     }
 
+    public static <T, S> Page<T> transfer(PaginationCollection<S> source, Collection<T> target) {
+        if (source == null || target == null) {
+            return empty();
+        }
+        return of(toList(target), source.getPage(), source.getSize(), source.getTotal());
+    }
+
+    public static <T, S> Page<T> transfer(Collection<S> source, Collection<T> target) {
+        if (source == null || target == null) {
+            return empty();
+        }
+        if (source instanceof PaginationCollection) {
+            return transfer((PaginationCollection<S>) source, target);
+        }
+        return wrap(toList(target));
+    }
 
     private static <T, S> List<T> mapping(Collection<S> source, Function<? super S, ? extends T> mapper) {
+        Objects.requireNonNull(mapper);
         if (source == null || source.isEmpty()) {
             return new ArrayList<>();
         }
@@ -214,6 +179,9 @@ public class Page<T> implements Serializable {
     private static <T> List<T> toList(Collection<T> collection) {
         if (collection == null) {
             return new ArrayList<>();
+        }
+        if (collection instanceof List) {
+            return (List<T>) collection;
         }
         return new ArrayList<>(collection);
     }
@@ -277,6 +245,10 @@ public class Page<T> implements Serializable {
 
     public void setPrevious(Boolean previous) {
         this.previous = previous;
+    }
+
+    public int getCurrent() {
+        return list != null ? list.size() : 0;
     }
 
     public static class Builder<T> {

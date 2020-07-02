@@ -170,7 +170,7 @@ public class PaginationInterceptor implements Interceptor {
     }
 
     /**
-     * Returns count quantity by generating a dynamic SQL.
+     * Returns count quantity by the generated SQL.
      */
     private Object countByGenerated(Executor executor, MappedStatement ms, BoundSql boundSql, Object parameter, ResultHandler resultHandler, String countColumn) throws SQLException {
         MappedStatement countMs = countMsMap.computeIfAbsent(ms.getId() + COUNT_SUFFIX, id -> newCountMappedStatement(ms, id));
@@ -182,7 +182,7 @@ public class PaginationInterceptor implements Interceptor {
     }
 
     /**
-     * Returns count quantity by the specified count method.
+     * Returns count quantity by the specified SQL.
      */
     private Object countBySpecified(Executor executor, MappedStatement ms, BoundSql boundSql, Object parameter, ResultHandler resultHandler, String countColumn, String countMsId) throws SQLException {
         MappedStatement countMs = null;
