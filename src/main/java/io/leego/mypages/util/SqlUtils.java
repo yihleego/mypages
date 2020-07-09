@@ -10,6 +10,7 @@ import com.alibaba.druid.sql.ast.statement.SQLSelectQuery;
 import com.alibaba.druid.sql.ast.statement.SQLSelectQueryBlock;
 import com.alibaba.druid.sql.ast.statement.SQLSelectStatement;
 import com.alibaba.druid.util.JdbcConstants;
+import io.leego.mypages.dialect.SqlDialect;
 import io.leego.mypages.exception.PaginationException;
 
 import java.util.Arrays;
@@ -25,6 +26,8 @@ import java.util.stream.Collectors;
 public final class SqlUtils {
     public static final String ASTERISK = "*";
     private static final String DEFAULT_TABLE_ALIAS = "DTA";
+    private static final char OPENING_PARENTHESIS = '(';
+    private static final char CLOSING_PARENTHESIS = ')';
     private static final SQLExpr COUNT_EXPR = SQLUtils.toSQLExpr("COUNT(*)");
     /** Aggregate functions */
     private static final String[] AGGREGATE_FUNCTION_NAMES = {
@@ -39,26 +42,27 @@ public final class SqlUtils {
             "std", "stddev", "stddev_pop", "stddev_samp", "stdev", "stdevp", "sum",
             "var", "var_pop", "var_samp", "variance", "varp",
     };
-    private static final Map<Character, Set<String>> AGGREGATE_FUNCTION_MAP;
-
-    static {
-        AGGREGATE_FUNCTION_MAP = Collections.unmodifiableMap(
-                Arrays.stream(AGGREGATE_FUNCTION_NAMES)
-                        .map(o -> o.toLowerCase() + "(")
-                        .collect(Collectors.groupingBy(o -> o.charAt(0), Collectors.toSet())));
-    }
+    private static final Map<Character, Set<String>> AGGREGATE_FUNCTION_MAP = buildAggregateMap(AGGREGATE_FUNCTION_NAMES);
 
     private SqlUtils() {
     }
 
     public static String toCountSql(String sql, String alias) {
-        return toCountSql(sql, null, alias);
+        return toCountSql(sql, null, alias, null);
     }
 
     public static String toCountSql(String sql, String column, String alias) {
+        return toCountSql(sql, column, alias, null);
+    }
+
+    public static String toCountSql(String sql, String alias, SqlDialect sqlDialect) {
+        return toCountSql(sql, null, alias, sqlDialect);
+    }
+
+    public static String toCountSql(String sql, String column, String alias, SqlDialect sqlDialect) {
         try {
-            // Ignore the SQL dialect.
-            SQLStatement sqlStatement = SQLUtils.parseSingleStatement(sql, JdbcConstants.MYSQL);
+            // Parse statement with db type.
+            SQLStatement sqlStatement = SQLUtils.parseSingleStatement(sql, getDbType(sqlDialect));
             if (!(sqlStatement instanceof SQLSelectStatement)) {
                 throw new PaginationException("Unsupported non-query SQL");
             }
@@ -121,24 +125,85 @@ public final class SqlUtils {
             return false;
         }
         for (SQLSelectItem item : sqlSelectItems) {
-            SQLExpr sqlExpr = item.getExpr();
-            if (sqlExpr == null || ASTERISK.equals(sqlExpr.toString())) {
+            SQLExpr expr = item.getExpr();
+            String exprString = expr != null ? expr.toString() : null;
+            if (expr == null
+                    || StringUtils.isEmpty(exprString)
+                    || ASTERISK.equals(exprString)) {
                 continue;
             }
-            if (sqlExpr instanceof SQLAggregateExpr) {
+            if (expr instanceof SQLAggregateExpr) {
                 return true;
             }
-            String expr = sqlExpr.toString().toLowerCase();
-            Set<String> aggregateFunctions = AGGREGATE_FUNCTION_MAP.get(expr.charAt(0));
-            if (aggregateFunctions != null && !aggregateFunctions.isEmpty()) {
-                for (String aggregateFunction : aggregateFunctions) {
-                    if (expr.startsWith(aggregateFunction)) {
-                        return true;
-                    }
+            if (isAggregate(exprString)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private static boolean isAggregate(String expr) {
+        if (expr.indexOf(OPENING_PARENTHESIS) == -1) {
+            return false;
+        }
+        String lowerCaseExpr = expr.toLowerCase();
+        Set<String> aggregateFunctions = AGGREGATE_FUNCTION_MAP.get(lowerCaseExpr.charAt(0));
+        if (aggregateFunctions != null && !aggregateFunctions.isEmpty()) {
+            for (String aggregateFunction : aggregateFunctions) {
+                if (lowerCaseExpr.startsWith(aggregateFunction)) {
+                    return true;
                 }
             }
         }
         return false;
+    }
+
+    private static Map<Character, Set<String>> buildAggregateMap(String[] array) {
+        if (array == null || array.length == 0) {
+            return Collections.emptyMap();
+        }
+        return Collections.unmodifiableMap(
+                Arrays.stream(array)
+                        .map(o -> o.toLowerCase() + OPENING_PARENTHESIS)
+                        .collect(Collectors.groupingBy(o -> o.charAt(0), Collectors.toSet())));
+    }
+
+    private static String getDbType(SqlDialect sqlDialect) {
+        if (sqlDialect == null) {
+            return JdbcConstants.MYSQL;
+        }
+        switch (sqlDialect) {
+            case DB2:
+                return JdbcConstants.DB2;
+            case DERBY:
+                return JdbcConstants.DERBY;
+            case H2:
+                return JdbcConstants.H2;
+            case HIVE:
+                return JdbcConstants.HIVE;
+            case HSQLDB:
+                return JdbcConstants.HSQL;
+            case INFORMIX:
+                return JdbcConstants.INFORMIX;
+            case MARIADB:
+                return JdbcConstants.MARIADB;
+            case MYSQL:
+                return JdbcConstants.MYSQL;
+            case ORACLE:
+                return JdbcConstants.ORACLE;
+            case PHOENIX:
+                return JdbcConstants.PHOENIX;
+            case POSTGRESQL:
+                return JdbcConstants.POSTGRESQL;
+            case SQLITE:
+                return JdbcConstants.SQLITE;
+            case SQLSERVER:
+                return JdbcConstants.SQL_SERVER;
+            case TIDB:
+                return JdbcConstants.MYSQL;
+            default:
+                return JdbcConstants.MYSQL;
+        }
     }
 
 }

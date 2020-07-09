@@ -15,7 +15,11 @@ public final class DialectFactory {
         }
         try {
             // Uses the constructor represented by the Constructor object to initialize a new instance
-            return sqlDialect.getDialectClass().getConstructor().newInstance();
+            Dialect dialect = sqlDialect.getDialectClass().getConstructor().newInstance();
+            if (dialect instanceof AbstractDialect) {
+                ((AbstractDialect) dialect).setSqlDialect(sqlDialect);
+            }
+            return dialect;
         } catch (Exception e) {
             throw new SqlDialectException(e);
         }

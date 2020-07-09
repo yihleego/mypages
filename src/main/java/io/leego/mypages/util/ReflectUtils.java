@@ -13,25 +13,55 @@ import java.util.List;
  * @author Yihleego
  */
 public final class ReflectUtils {
+    private static final Field[] EMPTY_FIELDS = new Field[0];
+    private static final Method[] EMPTY_METHODS = new Method[0];
+
     private ReflectUtils() {
     }
 
-    public static Field getDeclaredField(Object o, String fieldName) {
-        try {
-            return o.getClass().getDeclaredField(fieldName);
-        } catch (NoSuchFieldException ignored) {
-            // ignored
-        }
-        return null;
+    public static Field getField(Object o, String fieldName) throws NoSuchFieldException {
+        return o.getClass().getField(fieldName);
     }
 
-    public static Field getDeclaredField(Class<?> clazz, String fieldName) {
-        try {
-            return clazz.getDeclaredField(fieldName);
-        } catch (NoSuchFieldException ignored) {
-            // ignored
+    public static Field getField(Class<?> clazz, String fieldName) throws NoSuchFieldException {
+        return clazz.getField(fieldName);
+    }
+
+    public static Field[] getFields(Object o) {
+        return o.getClass().getFields();
+    }
+
+    public static Field[] getFields(Class<?> clazz) {
+        return clazz.getFields();
+    }
+
+    public static Field[] getFields(Object o, boolean excludeStatic) {
+        return getFields(o.getClass(), excludeStatic);
+    }
+
+    public static Field[] getFields(Class<?> clazz, boolean excludeStatic) {
+        if (!excludeStatic) {
+            return clazz.getFields();
         }
-        return null;
+        Field[] fields = clazz.getFields();
+        if (fields.length == 0) {
+            return EMPTY_FIELDS;
+        }
+        List<Field> list = new ArrayList<>(fields.length);
+        for (Field field : fields) {
+            if (!isStatic(field)) {
+                list.add(field);
+            }
+        }
+        return list.toArray(EMPTY_FIELDS);
+    }
+
+    public static Field getDeclaredField(Object o, String fieldName) throws NoSuchFieldException {
+        return o.getClass().getDeclaredField(fieldName);
+    }
+
+    public static Field getDeclaredField(Class<?> clazz, String fieldName) throws NoSuchFieldException {
+        return clazz.getDeclaredField(fieldName);
     }
 
     public static Field[] getDeclaredFields(Object o) {
@@ -51,20 +81,26 @@ public final class ReflectUtils {
             return clazz.getDeclaredFields();
         }
         Field[] fields = clazz.getDeclaredFields();
-        List<Field> fieldList = new ArrayList<>(fields.length);
+        if (fields.length == 0) {
+            return EMPTY_FIELDS;
+        }
+        List<Field> list = new ArrayList<>(fields.length);
         for (Field field : fields) {
             if (!isStatic(field)) {
-                fieldList.add(field);
+                list.add(field);
             }
         }
-        return fieldList.toArray(new Field[0]);
+        return list.toArray(EMPTY_FIELDS);
     }
 
-    public static Field getField(Object o, String fieldName) {
-        return getField(o.getClass(), fieldName);
+    public static Field getDeepField(Object o, String fieldName) throws NoSuchFieldException {
+        return getDeepField(o.getClass(), fieldName);
     }
 
-    public static Field getField(Class<?> clazz, String fieldName) {
+    public static Field getDeepField(Class<?> clazz, String fieldName) throws NoSuchFieldException {
+        if (fieldName == null) {
+            throw new NullPointerException();
+        }
         Class<?> targetClass = clazz;
         while (targetClass != null && targetClass != Object.class) {
             Field[] fields = targetClass.getDeclaredFields();
@@ -75,55 +111,38 @@ public final class ReflectUtils {
             }
             targetClass = targetClass.getSuperclass();
         }
-        return null;
+        throw new NoSuchFieldException(fieldName);
     }
 
-    public static Field[] getFields(Object o) {
-        return getFields(o.getClass(), false);
+    public static Field[] getDeepFields(Object o) {
+        return getDeepFields(o.getClass(), false);
     }
 
-    public static Field[] getFields(Class<?> clazz) {
-        return getFields(clazz, false);
+    public static Field[] getDeepFields(Class<?> clazz) {
+        return getDeepFields(clazz, false);
     }
 
-    public static Field[] getFields(Object o, boolean excludeStatic) {
-        return getFields(o.getClass(), excludeStatic);
+    public static Field[] getDeepFields(Object o, boolean excludeStatic) {
+        return getDeepFields(o.getClass(), excludeStatic);
     }
 
-    public static Field[] getFields(Class<?> clazz, boolean excludeStatic) {
-        List<Field> fieldList = new ArrayList<>();
+    public static Field[] getDeepFields(Class<?> clazz, boolean excludeStatic) {
+        List<Field> list = new ArrayList<>();
         Class<?> targetClass = clazz;
         while (targetClass != null && targetClass != Object.class) {
             Field[] fields = targetClass.getDeclaredFields();
             if (excludeStatic) {
                 for (Field field : fields) {
                     if (!isStatic(field)) {
-                        fieldList.add(field);
+                        list.add(field);
                     }
                 }
             } else {
-                Collections.addAll(fieldList, fields);
+                Collections.addAll(list, fields);
             }
             targetClass = targetClass.getSuperclass();
         }
-        return fieldList.toArray(new Field[0]);
-    }
-
-    public static Object getFieldValue(Object o, String fieldName) throws NoSuchFieldException, IllegalAccessException {
-        Field field = getField(o.getClass(), fieldName);
-        if (field == null) {
-            throw new NoSuchFieldException(fieldName);
-        }
-        return field.get(o);
-    }
-
-    public static Object getFieldValue(Object o, String fieldName, boolean accessible) throws NoSuchFieldException, IllegalAccessException {
-        Field field = getField(o.getClass(), fieldName);
-        if (field == null) {
-            throw new NoSuchFieldException(fieldName);
-        }
-        setAccessible(field, accessible);
-        return field.get(o);
+        return list.toArray(EMPTY_FIELDS);
     }
 
     public static Object getFieldValue(Object o, Field field) throws IllegalAccessException {
@@ -135,21 +154,14 @@ public final class ReflectUtils {
         return field.get(o);
     }
 
-    public static void setFieldValue(Object o, String fieldName, Object value) throws NoSuchFieldException, IllegalAccessException {
-        Field field = getField(o.getClass(), fieldName);
-        if (field == null) {
-            throw new NoSuchFieldException(fieldName);
-        }
-        field.set(o, value);
+    public static Object getFieldValue(Object o, String fieldName) throws NoSuchFieldException, IllegalAccessException {
+        return getDeepField(o, fieldName).get(o);
     }
 
-    public static void setFieldValue(Object o, String fieldName, Object value, boolean accessible) throws NoSuchFieldException, IllegalAccessException {
-        Field field = getField(o.getClass(), fieldName);
-        if (field == null) {
-            throw new NoSuchFieldException(fieldName);
-        }
+    public static Object getFieldValue(Object o, String fieldName, boolean accessible) throws NoSuchFieldException, IllegalAccessException {
+        Field field = getDeepField(o, fieldName);
         setAccessible(field, accessible);
-        field.set(o, value);
+        return field.get(o);
     }
 
     public static void setFieldValue(Object o, Field field, Object value) throws IllegalAccessException {
@@ -161,31 +173,60 @@ public final class ReflectUtils {
         field.set(o, value);
     }
 
-
-    public static Method getDeclaredMethod(Object o, String methodName) {
-        return getDeclaredMethod(o.getClass(), methodName);
+    public static void setFieldValue(Object o, String fieldName, Object value) throws NoSuchFieldException, IllegalAccessException {
+        getDeepField(o, fieldName).set(o, value);
     }
 
-    public static Method getDeclaredMethod(Object o, String methodName, Class<?>... parameterTypes) {
-        return getDeclaredMethod(o.getClass(), methodName, parameterTypes);
+    public static void setFieldValue(Object o, String fieldName, Object value, boolean accessible) throws NoSuchFieldException, IllegalAccessException {
+        Field field = getDeepField(o, fieldName);
+        setAccessible(field, accessible);
+        field.set(o, value);
     }
 
-    public static Method getDeclaredMethod(Class<?> clazz, String methodName) {
-        try {
-            return clazz.getDeclaredMethod(methodName);
-        } catch (NoSuchMethodException ignored) {
-            // ignored
+
+    public static Method getMethod(Object o, String methodName, Class<?>... parameterTypes) throws NoSuchMethodException {
+        return o.getClass().getMethod(methodName, parameterTypes);
+    }
+
+    public static Method getMethod(Class<?> clazz, String methodName, Class<?>... parameterTypes) throws NoSuchMethodException {
+        return clazz.getMethod(methodName, parameterTypes);
+    }
+
+    public static Method[] getMethods(Object o) {
+        return o.getClass().getMethods();
+    }
+
+    public static Method[] getMethods(Class<?> clazz) {
+        return clazz.getMethods();
+    }
+
+    public static Method[] getMethods(Object o, boolean excludeStatic) {
+        return getMethods(o.getClass(), excludeStatic);
+    }
+
+    public static Method[] getMethods(Class<?> clazz, boolean excludeStatic) {
+        if (!excludeStatic) {
+            return clazz.getMethods();
         }
-        return null;
+        Method[] methods = clazz.getMethods();
+        if (methods.length == 0) {
+            return EMPTY_METHODS;
+        }
+        List<Method> list = new ArrayList<>(methods.length);
+        for (Method method : methods) {
+            if (!isStatic(method)) {
+                list.add(method);
+            }
+        }
+        return list.toArray(EMPTY_METHODS);
     }
 
-    public static Method getDeclaredMethod(Class<?> clazz, String methodName, Class<?>... parameterTypes) {
-        try {
-            return clazz.getDeclaredMethod(methodName, parameterTypes);
-        } catch (NoSuchMethodException ignored) {
-            // ignored
-        }
-        return null;
+    public static Method getDeclaredMethod(Object o, String methodName, Class<?>... parameterTypes) throws NoSuchMethodException {
+        return o.getClass().getDeclaredMethod(methodName, parameterTypes);
+    }
+
+    public static Method getDeclaredMethod(Class<?> clazz, String methodName, Class<?>... parameterTypes) throws NoSuchMethodException {
+        return clazz.getDeclaredMethod(methodName, parameterTypes);
     }
 
     public static Method[] getDeclaredMethods(Object o) {
@@ -196,68 +237,84 @@ public final class ReflectUtils {
         return clazz.getDeclaredMethods();
     }
 
-    public static Method getMethod(Object o, String methodName) {
-        return getMethod(o.getClass(), methodName, (Class<?>[]) null);
+    public static Method[] getDeclaredMethods(Object o, boolean excludeStatic) {
+        return getDeclaredMethods(o.getClass(), excludeStatic);
     }
 
-    public static Method getMethod(Object o, String methodName, Class<?>... parameterTypes) {
-        return getMethod(o.getClass(), methodName, parameterTypes);
+    public static Method[] getDeclaredMethods(Class<?> clazz, boolean excludeStatic) {
+        if (!excludeStatic) {
+            return clazz.getDeclaredMethods();
+        }
+        Method[] methods = clazz.getDeclaredMethods();
+        if (methods.length == 0) {
+            return EMPTY_METHODS;
+        }
+        List<Method> list = new ArrayList<>(methods.length);
+        for (Method method : methods) {
+            if (!isStatic(method)) {
+                list.add(method);
+            }
+        }
+        return list.toArray(EMPTY_METHODS);
     }
 
-    public static Method getMethod(Class<?> clazz, String methodName) {
-        return getMethod(clazz, methodName, (Class<?>[]) null);
+    public static Method getDeepMethod(Object o, String methodName, Class<?>... parameterTypes) throws NoSuchMethodException {
+        return getDeepMethod(o.getClass(), methodName, parameterTypes);
     }
 
-    public static Method getMethod(Class<?> clazz, String methodName, Class<?>... parameterTypes) {
+    public static Method getDeepMethod(Class<?> clazz, String methodName, Class<?>... parameterTypes) throws NoSuchMethodException {
+        if (methodName == null) {
+            throw new NullPointerException();
+        }
+        NoSuchMethodException exception = null;
         Class<?> targetClass = clazz;
         while (targetClass != null && targetClass != Object.class) {
             try {
                 return targetClass.getDeclaredMethod(methodName, parameterTypes);
-            } catch (NoSuchMethodException ignored) {
-                // ignored
+            } catch (NoSuchMethodException e) {
+                if (exception == null) {
+                    exception = e;
+                }
             }
             targetClass = targetClass.getSuperclass();
         }
-        return null;
-    }
-
-    public static Method[] getMethods(Object o) {
-        return getMethods(o.getClass());
-    }
-
-    public static Method[] getMethods(Class<?> clazz) {
-        List<Method> methodList = new ArrayList<>();
-        Class<?> targetClass = clazz;
-        while (targetClass != null && targetClass != Object.class) {
-            Collections.addAll(methodList, targetClass.getDeclaredMethods());
-            targetClass = targetClass.getSuperclass();
+        if (exception == null) {
+            throw new NoSuchMethodException(methodName);
+        } else {
+            throw exception;
         }
-        return methodList.toArray(new Method[0]);
     }
 
-    public static Method[] getMethods(Object o, boolean excludeStatic) {
-        return getMethods(o.getClass(), excludeStatic);
+    public static Method[] getDeepMethods(Object o) {
+        return getDeepMethods(o.getClass(), false);
     }
 
-    public static Method[] getMethods(Class<?> clazz, boolean excludeStatic) {
-        List<Method> methodList = new ArrayList<>();
+    public static Method[] getDeepMethods(Class<?> clazz) {
+        return getDeepMethods(clazz, false);
+    }
+
+    public static Method[] getDeepMethods(Object o, boolean excludeStatic) {
+        return getDeepMethods(o.getClass(), excludeStatic);
+    }
+
+    public static Method[] getDeepMethods(Class<?> clazz, boolean excludeStatic) {
+        List<Method> list = new ArrayList<>();
         Class<?> targetClass = clazz;
         while (targetClass != null && targetClass != Object.class) {
             Method[] methods = targetClass.getDeclaredMethods();
             if (excludeStatic) {
                 for (Method method : methods) {
                     if (!isStatic(method)) {
-                        methodList.add(method);
+                        list.add(method);
                     }
                 }
             } else {
-                Collections.addAll(methodList, targetClass.getDeclaredMethods());
+                Collections.addAll(list, methods);
             }
             targetClass = targetClass.getSuperclass();
         }
-        return methodList.toArray(new Method[0]);
+        return list.toArray(EMPTY_METHODS);
     }
-
 
     public static Object invoke(Object o, Method method) throws IllegalAccessException, InvocationTargetException {
         return method.invoke(o);

@@ -22,6 +22,7 @@ public enum SqlDialect {
     SQLITE("SQLite", MySQLDialect.class),
     SQLSERVER("SQL Server", DerbyDialect.class),
     TIDB("TiDB", MySQLDialect.class),
+    UNKNOWN("unknown", null),
     ;
 
     private final String name;
@@ -57,9 +58,9 @@ public enum SqlDialect {
 
     public static SqlDialect get(String name) {
         if (name == null) {
-            return null;
+            return UNKNOWN;
         }
-        return map.get(name);
+        return map.getOrDefault(name, UNKNOWN);
     }
 
 }

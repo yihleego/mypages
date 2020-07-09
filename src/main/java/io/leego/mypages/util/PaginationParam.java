@@ -4,6 +4,7 @@ package io.leego.mypages.util;
  * @author Yihleego
  */
 public class PaginationParam {
+    private static final PaginationParam NON = new PaginationParam(false);
     /** One-based page index */
     protected Integer page;
     /** The size of the page to be returned */
@@ -17,9 +18,10 @@ public class PaginationParam {
     /** Uses a specified method to count */
     protected String countMethodName;
     /** Whether to paging */
-    private boolean pageable;
+    protected final boolean pageable;
 
-    public PaginationParam() {
+    public PaginationParam(boolean pageable) {
+        this.pageable = pageable;
     }
 
     public PaginationParam(Integer page, Integer size, Integer offset, Integer rows, String countColumn, String countMethodName, boolean pageable) {
@@ -32,8 +34,12 @@ public class PaginationParam {
         this.pageable = pageable;
     }
 
-    public PaginationParam(boolean pageable) {
-        this.pageable = pageable;
+    public static PaginationParam nonPagination() {
+        return NON;
+    }
+
+    public boolean isPageable() {
+        return pageable;
     }
 
     public Integer getPage() {
@@ -84,11 +90,4 @@ public class PaginationParam {
         this.countMethodName = countMethodName;
     }
 
-    public boolean isPageable() {
-        return pageable;
-    }
-
-    public void setPageable(boolean pageable) {
-        this.pageable = pageable;
-    }
 }

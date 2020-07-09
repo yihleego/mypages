@@ -20,7 +20,6 @@ import io.leego.mypages.util.PaginationUnrefinedParam;
 import io.leego.mypages.util.ReflectUtils;
 import io.leego.mypages.util.Search;
 import io.leego.mypages.util.StringUtils;
-import org.apache.ibatis.binding.BindingException;
 import org.apache.ibatis.cache.CacheKey;
 import org.apache.ibatis.executor.Executor;
 import org.apache.ibatis.mapping.BoundSql;
@@ -58,7 +57,6 @@ import java.util.concurrent.ConcurrentMap;
         @Signature(type = Executor.class, method = "query", args = {MappedStatement.class, Object.class, RowBounds.class, ResultHandler.class}),
         @Signature(type = Executor.class, method = "query", args = {MappedStatement.class, Object.class, RowBounds.class, ResultHandler.class, CacheKey.class, BoundSql.class})})
 public class PaginationInterceptor implements Interceptor {
-    private static final String COUNT_SUFFIX = "_COUNT";
     /** The specified SQL dialect, it can be null if the {@link #dialect} is specified. */
     private SqlDialect sqlDialect;
     /** Object that extends {@link io.leego.mypages.dialect.Dialect}, it cannot be null. */
@@ -173,7 +171,7 @@ public class PaginationInterceptor implements Interceptor {
      * Returns count quantity by the generated SQL.
      */
     private Object countByGenerated(Executor executor, MappedStatement ms, BoundSql boundSql, Object parameter, ResultHandler resultHandler, String countColumn) throws SQLException {
-        MappedStatement countMs = countMsMap.computeIfAbsent(ms.getId() + COUNT_SUFFIX, id -> newCountMappedStatement(ms, id));
+        MappedStatement countMs = countMsMap.computeIfAbsent(buildCountMsKey(ms), id -> newCountMappedStatement(ms, id));
         CacheKey countKey = executor.createCacheKey(countMs, parameter, RowBounds.DEFAULT, boundSql);
         String originSql = boundSql.getSql();
         String countSql = dialect.getCountSql(originSql, countColumn);
@@ -279,12 +277,25 @@ public class PaginationInterceptor implements Interceptor {
     private boolean isPaging(Object parameter, Class<?> returnType) {
         if (parameter == null
                 || !Collection.class.isAssignableFrom(returnType)
+                || isSimpleType(parameter.getClass())
                 || parameter.getClass().getAnnotation(DisablePagination.class) != null) {
             return false;
         }
         return obtainParamsFromFields
                 || parameter instanceof Search
                 || parameter.getClass().getAnnotation(Pagination.class) != null;
+    }
+
+    /**
+     * Returns <code>true</code> if it is a simple type.
+     * @param type The type
+     */
+    private boolean isSimpleType(Class<?> type) {
+        return type.isPrimitive()
+                || Number.class.isAssignableFrom(type)
+                || CharSequence.class.isAssignableFrom(type)
+                || type == Character.class
+                || type == Boolean.class;
     }
 
     /**
@@ -313,9 +324,15 @@ public class PaginationInterceptor implements Interceptor {
      * @return {@link PaginationParam}
      */
     private PaginationParam analyseParameter(Object parameter, String msId) {
-        PaginationUnrefinedParam unrefinedParam = unrefinedParamMap.computeIfAbsent(
-                msId + "#" + parameter.getClass().getName(),
-                className -> buildPaginationUnrefinedParam(parameter));
+        String key = buildUnrefinedParamKey(parameter, msId);
+        PaginationUnrefinedParam unrefinedParam = unrefinedParamMap.get(key);
+        if (unrefinedParam == null) {
+            unrefinedParam = getPaginationUnrefinedParam(parameter);
+            if (unrefinedParam.isInvalid()) {
+                return PaginationParam.nonPagination();
+            }
+            unrefinedParamMap.putIfAbsent(key, unrefinedParam);
+        }
         int defaultPage = unrefinedParam.getDefaultPage();
         int defaultSize = unrefinedParam.getDefaultSize();
         int maxPage = unrefinedParam.getMaxPage();
@@ -326,6 +343,8 @@ public class PaginationInterceptor implements Interceptor {
         Integer size;
         Integer offset;
         Integer rows;
+        boolean usePageSize;
+        boolean useOffsetRows;
         if (parameter instanceof Search) {
             Search search = (Search) parameter;
             page = search.getPage();
@@ -354,8 +373,8 @@ public class PaginationInterceptor implements Interceptor {
                 && StringUtils.isNotEmpty(unrefinedParam.getCountColumn())) {
             countColumn = unrefinedParam.getCountColumn();
         }
-        boolean usePageSize = page != null && size != null;
-        boolean useOffsetRows = offset != null && rows != null;
+        usePageSize = page != null && size != null;
+        useOffsetRows = offset != null && rows != null;
         if (usePageSize) {
             if (page <= 0 && defaultPage > 0) {
                 page = defaultPage;
@@ -393,7 +412,7 @@ public class PaginationInterceptor implements Interceptor {
                 size = null;
             }
         } else {
-            return new PaginationParam(false);
+            return PaginationParam.nonPagination();
         }
         return new PaginationParam(page, size, offset, rows, countColumn, countMethodName, true);
     }
@@ -403,52 +422,22 @@ public class PaginationInterceptor implements Interceptor {
      * @param parameter The parameter
      * @return {@link PaginationUnrefinedParam}
      */
-    private PaginationUnrefinedParam buildPaginationUnrefinedParam(Object parameter) {
-        int defaultPage;
-        int defaultSize;
-        int maxPage;
-        int maxSize;
-        String countColumn;
+    private PaginationUnrefinedParam getPaginationUnrefinedParam(Object parameter) {
+        // There may be an object that extends Search.
+        if (parameter instanceof Search) {
+            return buildPaginationUnrefinedParam(parameter, false);
+        }
+        // There may be a map.
+        if (parameter instanceof Map) {
+            return buildPaginationUnrefinedParam(parameter, true);
+        }
         Method pageReadMethod = null;
         Method sizeReadMethod = null;
         Method offsetReadMethod = null;
         Method rowsReadMethod = null;
         Method countColumnReadMethod = null;
         Method countMethodNameReadMethod = null;
-        Pagination pagination = ReflectUtils.getAnnotation(parameter, Pagination.class);
-        if (pagination != null) {
-            defaultPage = pagination.defaultPage() > 0 ? pagination.defaultPage() : this.defaultPage;
-            defaultSize = pagination.defaultSize() > 0 ? pagination.defaultSize() : this.defaultSize;
-            maxPage = pagination.maxPage() > 0 ? pagination.maxPage() : this.maxPage;
-            maxSize = pagination.maxSize() > 0 ? pagination.maxSize() : this.maxSize;
-            countColumn = StringUtils.isNotEmpty(pagination.countColumn()) ? pagination.countColumn() : this.countColumn;
-        } else {
-            defaultPage = this.defaultPage;
-            defaultSize = this.defaultSize;
-            maxPage = this.maxPage;
-            maxSize = this.maxSize;
-            countColumn = this.countColumn;
-        }
-        // There may be an object that extends Search.
-        if (parameter instanceof Search) {
-            return new PaginationUnrefinedParam(
-                    defaultPage,
-                    defaultSize,
-                    maxPage,
-                    maxSize,
-                    countColumn,
-                    false);
-        }
-        // There may be a map object.
-        if (parameter instanceof Map) {
-            return new PaginationUnrefinedParam(
-                    defaultPage,
-                    defaultSize,
-                    maxPage,
-                    maxSize,
-                    countColumn,
-                    true);
-        }
+        // Obtains read-method from configuration.
         if (this.obtainParamsFromFields) {
             PropertyDescriptor[] pds;
             try {
@@ -475,11 +464,8 @@ public class PaginationInterceptor implements Interceptor {
             }
         }
         // Obtains read-method by field annotations.
-        Field[] fields = ReflectUtils.getFields(parameter);
+        Field[] fields = ReflectUtils.getDeepFields(parameter, true);
         for (Field field : fields) {
-            if (ReflectUtils.isStatic(field)) {
-                continue;
-            }
             Annotation[] annotations = field.getDeclaredAnnotations();
             if (annotations.length == 0) {
                 continue;
@@ -505,11 +491,8 @@ public class PaginationInterceptor implements Interceptor {
             }
         }
         // Obtains read-method by method annotations.
-        Method[] methods = ReflectUtils.getMethods(parameter);
+        Method[] methods = ReflectUtils.getDeepMethods(parameter, true);
         for (Method method : methods) {
-            if (ReflectUtils.isStatic(method)) {
-                continue;
-            }
             Annotation[] annotations = method.getDeclaredAnnotations();
             if (annotations.length == 0) {
                 continue;
@@ -530,19 +513,50 @@ public class PaginationInterceptor implements Interceptor {
                 }
             }
         }
-        return new PaginationUnrefinedParam(
-                defaultPage,
-                defaultSize,
-                maxPage,
-                maxSize,
-                countColumn,
+        if (pageReadMethod == null
+                && sizeReadMethod == null
+                && offsetReadMethod == null
+                && rowsReadMethod == null) {
+            return PaginationUnrefinedParam.invalidation();
+        }
+        PaginationUnrefinedParam unrefinedParam = buildPaginationUnrefinedParam(parameter, false);
+        unrefinedParam.setMethods(
                 pageReadMethod,
                 sizeReadMethod,
                 offsetReadMethod,
                 rowsReadMethod,
                 countColumnReadMethod,
-                countMethodNameReadMethod,
-                false);
+                countMethodNameReadMethod);
+        return unrefinedParam;
+    }
+
+    /**
+     * Builds {@link PaginationUnrefinedParam} from parameter.
+     * @param parameter The parameter
+     * @param mapType   Whether it is a map type
+     * @return {@link PaginationUnrefinedParam}
+     */
+    private PaginationUnrefinedParam buildPaginationUnrefinedParam(Object parameter, boolean mapType) {
+        Pagination pagination = parameter.getClass().getAnnotation(Pagination.class);
+        if (pagination != null) {
+            return new PaginationUnrefinedParam(
+                    pagination.defaultPage() > 0 ? pagination.defaultPage() : this.defaultPage,
+                    pagination.defaultSize() > 0 ? pagination.defaultSize() : this.defaultSize,
+                    pagination.maxPage() > 0 ? pagination.maxPage() : this.maxPage,
+                    pagination.maxSize() > 0 ? pagination.maxSize() : this.maxSize,
+                    StringUtils.isNotEmpty(pagination.countColumn()) ? pagination.countColumn() : this.countColumn,
+                    mapType,
+                    true);
+        } else {
+            return new PaginationUnrefinedParam(
+                    this.defaultPage,
+                    this.defaultSize,
+                    this.maxPage,
+                    this.maxSize,
+                    this.countColumn,
+                    mapType,
+                    true);
+        }
     }
 
     /**
@@ -606,7 +620,7 @@ public class PaginationInterceptor implements Interceptor {
         try {
             // The map may be an object of {@link MapperMethod.ParamMap}
             return map.get(key);
-        } catch (BindingException ignored) {
+        } catch (Throwable ignored) {
             return null;
         }
     }
@@ -660,11 +674,7 @@ public class PaginationInterceptor implements Interceptor {
         if (value instanceof Number) {
             return ((Number) value).intValue();
         } else if (value instanceof String) {
-            try {
-                return Integer.parseInt((String) value);
-            } catch (NumberFormatException e) {
-                return null;
-            }
+            return Integer.parseInt((String) value);
         }
         return null;
     }
@@ -679,13 +689,23 @@ public class PaginationInterceptor implements Interceptor {
         if (value instanceof Number) {
             return ((Number) value).longValue();
         } else if (value instanceof String) {
-            try {
-                return Long.parseLong((String) value);
-            } catch (NumberFormatException e) {
-                return null;
-            }
+            return Long.parseLong((String) value);
         }
         return null;
+    }
+
+    /**
+     * Returns count MappedStatement key.
+     */
+    private String buildCountMsKey(MappedStatement ms) {
+        return ms.getId() + "__COUNT";
+    }
+
+    /**
+     * Returns unrefined param key.
+     */
+    private String buildUnrefinedParamKey(Object parameter, String msId) {
+        return msId + "#" + parameter.getClass().getName();
     }
 
 
@@ -880,7 +900,7 @@ public class PaginationInterceptor implements Interceptor {
     }
 
     public String getCountMethodNameFieldName() {
-        return countColumnFieldName;
+        return countMethodNameFieldName;
     }
 
     public String getEnableCountFieldName() {
