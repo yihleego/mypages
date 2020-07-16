@@ -187,8 +187,17 @@ public class Page<T> implements Serializable {
     }
 
 
-    public static <T> Builder<T> builder() {
-        return new Builder<>();
+    public <U> Page<U> map(Function<? super T, ? extends U> converter) {
+        return new Page<>(list == null ? null : list.stream().map(converter).collect(Collectors.toList()),
+                page, size, total, totalPages, next, previous);
+    }
+
+    public int getCurrent() {
+        return list != null ? list.size() : 0;
+    }
+
+    public boolean isEmpty() {
+        return list == null || list.isEmpty();
     }
 
     public List<T> getList() {
@@ -247,8 +256,9 @@ public class Page<T> implements Serializable {
         this.previous = previous;
     }
 
-    public int getCurrent() {
-        return list != null ? list.size() : 0;
+
+    public static <T> Builder<T> builder() {
+        return new Builder<>();
     }
 
     public static class Builder<T> {
