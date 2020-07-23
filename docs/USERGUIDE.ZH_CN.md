@@ -1,14 +1,18 @@
-# Getting Started
+# 1. 简介
 
-Please make sure that Java version is 1.8 and above.
+MyPages是Java实现基于[MyBatis](https://github.com/mybatis/mybatis-3)的开源分页插件，最大程度简化数据库分页查询操作，支持市面上大部分数据库，如：MySQL、PostgreSQL、Oracle、SQLServer等。
 
-# Installation
+# 2. 准备工作
 
-## Maven Dependency
+请确保您的Java版本在1.8及以上。
+
+# 3. 依赖
+
+## Maven
 
 ```xml
 <properties>
-    <mypages.version>0.3.2</mypages.version>
+    <mypages.version>0.4.0</mypages.version>
 </properties>
 
 <dependency>
@@ -18,25 +22,40 @@ Please make sure that Java version is 1.8 and above.
 </dependency>
 ```
 
-## Gradle Dependency
+## Gradle
 
 ```xml
-implementation 'io.leego:mypages:0.3.2'
+implementation 'io.leego:mypages:0.4.0'
 ```
 
-# Quick Setup
+# 4. 快速设置
 
-To use MyBatis with Spring you need at least two things defined in the Spring application context: an SqlSessionFactory and at least one mapper interface.
+请注意，PaginationInterceptor需要配置SqlDialect，它可以是任何SqlDialect且必须被配置。
 
-In MyBatis-Spring, an SqlSessionFactoryBean is used to create an SqlSessionFactory. To configure the factory bean, put the following in the Spring configuration file:
+## MyBatis SqlSessionFactoryBean
 
-## Spring XML
+```java
+// Plugins
+PaginationInterceptor paginationInterceptor = new PaginationInterceptor(SqlDialect.MYSQL);
+Interceptor[] plugins = new Interceptor[]{paginationInterceptor};
+// SqlSessionFactoryBean
+SqlSessionFactoryBean sqlSessionFactoryBean = new SqlSessionFactoryBean();
+        sqlSessionFactoryBean.setDataSource(dataSource);
+        sqlSessionFactoryBean.setPlugins(plugins);
+```
+
+## Spring
+
+要在Spring中使用MyBatis，至少需要在Spring应用程序上下文中定义两个东西：SqlSessionFactory对象和至少一个mapper接口。
+
+在MyBatis-Spring中，SqlSessionFactoryBean用于创建SqlSessionFactory。要配置工厂bean，请在Spring配置文件中放入以下内容：
+
+### Spring XML
 
 ```xml
 <bean id="sqlSessionFactoryBean" class="org.mybatis.spring.SqlSessionFactoryBean">
     <property name="dataSource" ref="dataSource"/>
     <property name="plugins">
-        <!-- Configures pagination plugin -->
         <bean class="io.leego.mypages.interceptor.PaginationInterceptor">
             <property name="sqlDialect" value="MYSQL"/>
         </bean>
@@ -44,17 +63,16 @@ In MyBatis-Spring, an SqlSessionFactoryBean is used to create an SqlSessionFacto
 </bean>
 ```
 
-## Spring Boot
+### Spring Boot
 
 ```java
 @Configuration
-@MapperScan(basePackages = "com.example.mapper")
-public class MybatisConfig {
+public class MybatisConfiguration {
     @Bean
     public SqlSessionFactory sqlSessionFactory(DataSource dataSource) throws Exception {
         // Plugins
-        Interceptor[] plugins = new Interceptor[1];
-        plugins[0] = interceptor();
+        PaginationInterceptor paginationInterceptor = new PaginationInterceptor(SqlDialect.MYSQL);
+        Interceptor[] plugins = new Interceptor[]{paginationInterceptor};
         // SqlSessionFactoryBean
         SqlSessionFactoryBean sqlSessionFactoryBean = new SqlSessionFactoryBean();
         sqlSessionFactoryBean.setDataSource(dataSource);
@@ -63,15 +81,19 @@ public class MybatisConfig {
     }
 
     @Bean
-    public PaginationInterceptor interceptor() {
+    public PaginationInterceptor paginationInterceptor() {
         return new PaginationInterceptor(SqlDialect.MYSQL);
     }
 }
 ```
 
-Notice that the PaginationInterceptor requires SqlDialect. This can be any SqlDialect and should be configured.
+### Spring Boot Starter
 
-Assume you have a search class defined like the following:
+> * 请使用: [mypages-spring-boot-starter](https://github.com/yihleego/mypages-spring-boot-starter)
+
+# 5. 快速开始
+
+假设存在如下定义的类：
 
 ```java
 import io.leego.mypages.annotation.Pagination;
@@ -79,61 +101,58 @@ import io.leego.mypages.annotation.Page;
 import io.leego.mypages.annotation.Size;
 
 @Pagination
-public class SearchDTO {
+public class Pageable {
     @Page
     private Integer page;
     @Size
     private Integer size;
+
+    public Pageable(Integer page, Integer size) {
+        this.page = page;
+        this.size = size;
+    }
     /* getter setter */
 }
 ```
 
-Assume you have a mapper interface defined like the following:
+假设存在如下定义的Mapper：
 
 ```java
 public interface FooMapper {
     @Select("SELECT * FROM foo")
-    List<Foo> list(SearchDTO search);
+    List<Foo> query(Pageable pageable);
 }
 ```
 
-Calling paging methods is now only a few lines of code:
+调用查询方法：
 
 ```java
 import io.leego.mypages.util.Page;
 
-public class FooServiceImpl implements FooService {
+@Service
+public class QueryTests {
     @Autowired
-    private final FooMapper fooMapper;
+    private FooMapper fooMapper;
 
-    public Page<Foo> search(SearchDTO search) {
-        return Page.of(fooMapper.list(search));
+    public Page<Foo> query() {
+        return Page.of(fooMapper.query(new Pageable(1, 10)));
     }
 }
 ```
 
-# Enable Pagination
+# 6. 启用分页
 
-## 1.Annotations (Recommended)
+## 注解 (推荐)
 
-Use ```@Pagination```, ```@Page```, ```@Size``` annotations.
+使用 ```@Pagination```, ```@Page```, ```@Size```, ```@Offset```, ```@Rows``` 注解.
 
 ```java
 @Pagination
-public class SearchDTO {
+public class Pageable {
     @Page
     private Integer page;
     @Size
     private Integer size;
-    /* getter setter */
-}
-```
-
-Or use ```@Pagination```, ```@Offset```, ```@Rows``` annotations.
-
-```java
-@Pagination
-public class SearchDTO {
     @Offset
     private Integer offset;
     @Rows
@@ -142,14 +161,14 @@ public class SearchDTO {
 }
 ```
 
-More annotations: ```@CountColumn```, ```@DisableCount```, ```@DisablePagination```.
+更多注解: ```@CountColumn```, ```@CountMethodName```, ```@DisableCount```, ```@DisablePagination```.
 
-## 2.Configure PaginationInterceptor (Recommended)
+## PaginationInterceptor配置 (推荐)
 
-Define a class with paging parameters, and configure parameters field names.
+使用分页参数定义一个类，并配置参数字段名。
 
 ```java
-public class SearchDTO {
+public class Pageable {
     private Integer page;
     private Integer size;
     private Integer offset;
@@ -160,188 +179,188 @@ public class SearchDTO {
 }
 ```
 
+### 从参数字段中获取page和size值
+
 ```java
-// Obtains page and size values from fields of parameter.
-PaginationInterceptor pagingPlugin = new PaginationInterceptor()
-    .sqlDialect(SqlDialect.MYSQL)
+PaginationInterceptor interceptor = new PaginationInterceptor(SqlDialect.MYSQL)
     .pagingFields("page", "size");
 ```
 
+### 从参数字段中获取offset和rows值
+
 ```java
-// Obtains offset and rows values from fields of parameter.
-PaginationInterceptor offsetRowsPlugin = new PaginationInterceptor()
-    .sqlDialect(SqlDialect.MYSQL)
+PaginationInterceptor interceptor = new PaginationInterceptor(SqlDialect.MYSQL)
     .offsetRowsFields("offset", "rows");
 ```
 
-Others: 
+### 更多配置
 
 ```java
-PaginationInterceptor plugin = new PaginationInterceptor()
-    // SqlDialect
-    .sqlDialect(SqlDialect.MYSQL)
-    // Counting column name, the default value is "*".
-    .countColumn("*")
-    // The field name of counting column name.
-    .countColumnFieldName("column")
-    // whether to count by value of filed.
-    .enableCountFieldName("allowCount")
-    // Whether to skip query if total value equals zero.
-    .skipQueryIfCountEqualsZero(true)
-    // Replaces page with defaultPage if page is invalid.
-    .defaultPage(1)
-    // Replaces size with defaultSize if size is invalid.
-    .defaultSize(20)
-    // Replaces page with maxPage if page is invalid.
-    .maxPage(9999)
-    // Replaces size with maxSize if size is invalid.
-    .maxSize(1000);
+PaginationInterceptor interceptor = new PaginationInterceptor()
+    .sqlDialect(SqlDialect.MYSQL) // 指定SqlDialect。
+    .pagingFields("page", "size") // 从参数字段中获取page和size值。
+    .offsetRowsFields("offset", "rows") // 从参数字段中获取offset和rows值。
+    .countColumn("*") // 设置count字段名称，默认值为"*"。
+    .countColumnFieldName("column") // 从参数字段中获取count字段名称。
+    .enableCountFieldName("allowCount") // 是否启用count。
+    .skipQueryIfCountEqualsZero(true) // 是否跳过count如果总数量为0。
+    .defaultPage(1) // 如果page为空或小于1，则用default-page替换page。
+    .defaultSize(20) // 如果size为空或小于1，则用default-size替换size。
+    .maxPage(9999) // 如果page大于max-page，则用max-page替换page。
+    .maxSize(1000); // 如果size大于max-size，则用max-size替换size。
+    
 ```
 
-## 3.Extends ```io.leego.mypages.util.Search```
+## 继承 ```io.leego.mypages.util.Pageable```
 
-Define a class extends ```io.leego.mypages.util.Search```.
+定义一个继承 ```io.leego.mypages.util.Pageable```的类.
 
 ```java
-public class SearchDTO extends io.leego.mypages.util.Search {
+public class PageableDTO extends io.leego.mypages.util.Pageable {
     private String name;
     /* getter setter */
 }
 ```
 
-# Uses custom count method
+# 7. 使用自定义Count方法
 
-Assume you have a mapper interface defined like the following:
+## 注解
 
-```java
-public interface FooMapper {
-    @Select("SELECT * FROM foo")
-    List<Foo> list(SearchDTO search);
-    
-    /** Custom count method */
-    @Select("SELECT COUNT(*) FROM foo")
-    long count(SearchDTO search);
-}
-```
-
-## 1.Annotations
+假设存在如下定义的类：
 
 ```java
 @Pagination
-public class SearchDTO {
+public class Pageable {
     @Page
     private Integer page;
     @Size
     private Integer size;
     @CountMethodName
     private String countMethodName;
+
+    public Pageable(Integer page, Integer size, String countMethodName) {
+        this.page = page;
+        this.size = size;
+        this.countMethodName = countMethodName;
+    }
     /* getter setter */
 }
 ```
 
-Setting custom count method name:
+## PaginationInterceptor配置
 
 ```java
-import io.leego.mypages.util.Page;
-
-public class FooServiceImpl implements FooService {
-    @Autowired
-    private final FooMapper fooMapper;
-
-    public Page<Foo> search(SearchDTO search) {
-        // Specifies the count method name in the mapper.
-        search.setCountMethodName("count");
-        return Page.of(fooMapper.list(search));
-    }
-}
-```
-
-## 2.Configure PaginationInterceptor
-
-Define a class with paging parameters, and configure parameters field names.
-
-```java
-public class SearchDTO {
+public class Pageable {
     private Integer page;
     private Integer size;
     private String countMethodName;
+
+    public Pageable(Integer page, Integer size, String countMethodName) {
+        this.page = page;
+        this.size = size;
+        this.countMethodName = countMethodName;
+    }
     /* getter setter */
 }
 ```
 
 ```java
-// Specifies the count method name.
-PaginationInterceptor pagingPlugin = new PaginationInterceptor()
-    .sqlDialect(SqlDialect.MYSQL)
+PaginationInterceptor pagingPlugin = new PaginationInterceptor(SqlDialect.MYSQL)
     .pagingFields("page", "size")
     .specifyCountMethod("countMethodName");
 ```
 
-# Reasonable
+## 调用Query和Count方法
 
-Rationalize parameters if the value is invalid, the following parameters can be set:
-
-**defaultPage**: Replaces page with defaultPage if page number is null or less than 1.
-
-**defaultSize**: Replaces size with defaultSize if page size is null or less than 1.
-
-**maxPage**: Replaces page with maxPage if page number is greater than maxPage.
-
-**maxSize**: Replaces size with maxSize if page size is greater than maxSize.
-
-
-These can be set up like the following:
-
-```java
-@Pagination(defaultPage = 1, defaultSize = 10, maxPage = 100, maxSize = 100)
-public class SearchDTO {}
-```
-
-Or
-
-```java
-new PaginationInterceptor()
-    .sqlDialect(SqlDialect.MYSQL)
-    .defaultPage(1)
-    .defaultSize(10)
-    .maxPage(100)
-    .maxSize(100);
-```
-
-# Query Results
-
-If the paging query proceed, it will return an instance of the ```PaginationCollection```.
-
-Assume you have a mapper interface defined like the following:
+假设存在如下定义的Mapper：
 
 ```java
 public interface FooMapper {
     @Select("SELECT * FROM foo")
-    List<Foo> list(SearchDTO search);
+    List<Foo> query(Pageable pageable);
+    
+    @Select("SELECT COUNT(*) FROM foo")
+    long count(Pageable pageable);
 }
 ```
 
-## 1.Ready-Made Wrapper Class
-
-Use paging query result wrapper class: ```io.leego.mypages.util.Page```.
+指定Count方法名称：
 
 ```java
-Page<Foo> result = Page.of(fooMapper.list(search));
+import io.leego.mypages.util.Page;
+
+@Service
+public class QueryTests {
+    @Autowired
+    private FooMapper fooMapper;
+
+    public Page<Foo> query() {
+        // Specifies the count method name.
+         return Page.of(fooMapper.query(new Pageable(1, 10, "count")));
+    }
+}
 ```
+
+# 8. 参数合理化
+  
+如果分页参数无效，需要合理化参数，可以设置以下参数:
+
+**defaultPage**: 如果page为空或小于1，则用default-page替换page。
+**defaultSize**: 如果size为空或小于1，则用default-size替换size。
+**maxPage**: 如果page大于max-page，则用max-page替换page。
+**maxSize**: 如果size大于max-size，则用max-size替换size。
+
+可以按如下方式进行配置：
+
+## 注解配置
+```java
+@Pagination(defaultPage = 1, defaultSize = 10, maxPage = 1000, maxSize = 1000)
+public class Pageable {}
+```
+
+## PaginationInterceptor配置
 
 ```java
-Page<Bar> result = Page.of(fooMapper.list(search), foo -> new Bar(foo.getName()));
+PaginationInterceptor interceptor = new PaginationInterceptor(SqlDialect.MYSQL)
+    .defaultPage(1)
+    .defaultSize(10)
+    .maxPage(1000)
+    .maxSize(1000);
 ```
 
-## 2.Custom Classes & Utils
+# 9. 查询结果
 
-For example:
+如果调用执行成功结束，它将返回一个```PaginationCollection```实例。
 
-#### Wrapper Class
+## 使用包装 ```io.leego.mypages.util.Page``` 
+
+#### 包装
+
+```java
+Page<Foo> result = Page.of(fooMapper.query(pageable));
+```
+
+#### 转化
+
+```java
+Page<Bar> result = Page.of(fooMapper.query(pageable), foo -> new Bar(foo));
+```
+
+#### 映射
+
+```java
+Page<Bar> result = Page.of(fooMapper.query(pageable))
+    .map(foo -> new Bar(foo));
+```
+
+## 自定义包装类和工具类
+
+参考例子：
+
+#### 包装类
 
 ```java
 public class Pagination<T> implements Serializable {
-    private static final long serialVersionUID = 3214571808482585491L;
     protected List<T> list;
     protected Integer page;
     protected Integer size;
@@ -349,6 +368,18 @@ public class Pagination<T> implements Serializable {
     protected Long totalPages;
     protected Boolean next;
     protected Boolean previous;
+    protected Object extra;
+
+    public Pagination(List<T> list, Integer page, Integer size, Long total, Long totalPages, Boolean next, Boolean previous, Object extra) {
+        this.list = list;
+        this.page = page;
+        this.size = size;
+        this.total = total;
+        this.totalPages = totalPages;
+        this.next = next;
+        this.previous = previous;
+        this.extra = extra;
+    }
 
     public Pagination(List<T> list, Integer page, Integer size, Long total, Long totalPages, Boolean next, Boolean previous) {
         this.list = list;
@@ -373,6 +404,10 @@ public class Pagination<T> implements Serializable {
 
     public Pagination(List<T> list) {
         this.list = list;
+    }
+
+    public static <T> Pagination<T> of(List<T> list, Integer page, Integer size, Long total, Long totalPages, Boolean next, Boolean previous, Object extra) {
+        return new Pagination<>(list, page, size, total, totalPages, next, previous, extra);
     }
 
     public static <T> Pagination<T> of(List<T> list, Integer page, Integer size, Long total, Long totalPages, Boolean next, Boolean previous) {
@@ -427,12 +462,25 @@ public class Pagination<T> implements Serializable {
         return new Pagination<>(new ArrayList<>());
     }
 
+    public <U> Pagination<U> map(Function<? super T, ? extends U> converter) {
+        return new Pagination<>(list == null ? null : list.stream().map(converter).collect(Collectors.toList()),
+                page, size, total, totalPages, next, previous, extra);
+    }
+
+    public int getCurrent() {
+        return list != null ? list.size() : 0;
+    }
+
+    public boolean isEmpty() {
+        return list == null || list.isEmpty();
+    }
+
     /* getter setter */
 
 }
 ```
 
-#### Util
+#### 工具类
 
 ```java
 public final class PageUtils {
@@ -503,10 +551,12 @@ public final class PageUtils {
 }
 ```
 
+使用自定义包装类和工具类：
+
 ```java
-Pagination<Foo> result = PageUtils.of(fooMapper.list(search));
+Pagination<Foo> result = PageUtils.of(fooMapper.query(pageable));
 ```
 
 ```java
-Pagination<Bar> result = PageUtils.of(fooMapper.list(search), foo -> new Bar(foo.getName()));
+Pagination<Bar> result = PageUtils.of(fooMapper.query(pageable), foo -> new Bar(foo));
 ```

@@ -5,7 +5,7 @@ import java.io.Serializable;
 /**
  * @author Yihleego
  */
-public class Search implements Serializable {
+public class Pageable implements Serializable {
     private static final long serialVersionUID = -1134397368997770745L;
     /** One-based page index */
     protected Integer page;
@@ -20,15 +20,15 @@ public class Search implements Serializable {
     /** Uses a specified method to count */
     protected String countMethodName;
 
-    public Search() {
+    public Pageable() {
     }
 
-    public Search(Integer page, Integer size) {
+    public Pageable(Integer page, Integer size) {
         this.page = page;
         this.size = size;
     }
 
-    public Search(Integer page, Integer size, Integer offset, Integer rows, String countColumn) {
+    public Pageable(Integer page, Integer size, Integer offset, Integer rows, String countColumn) {
         this.page = page;
         this.size = size;
         this.offset = offset;
@@ -36,7 +36,7 @@ public class Search implements Serializable {
         this.countColumn = countColumn;
     }
 
-    public Search(Integer page, Integer size, Integer offset, Integer rows, String countColumn, String countMethodName) {
+    public Pageable(Integer page, Integer size, Integer offset, Integer rows, String countColumn, String countMethodName) {
         this.page = page;
         this.size = size;
         this.offset = offset;

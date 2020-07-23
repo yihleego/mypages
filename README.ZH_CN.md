@@ -1,11 +1,10 @@
 # MyPages
 
-[Chinese Document 中文版](README.ZH_CN.md)
+[English Document 英文版](README.md)
 
-MyPages is a java based, open source pagination plugin for MyBatis that simplifies database paging queries.
-Many databases, one plugin.
+MyPages是Java实现基于[MyBatis](https://github.com/mybatis/mybatis-3)的开源分页插件，最大程度简化数据库分页查询操作，支持市面上大部分数据库，如：MySQL、PostgreSQL、Oracle、SQLServer等。
 
-## Installation
+## 安装
 
 ```bash
 $ git clone https://github.com/yihleego/mypages.git
@@ -13,7 +12,7 @@ $ cd mypages
 $ mvn clean install
 ```
 
-## Dependency
+## 依赖
 
 ### Maven
 
@@ -35,9 +34,9 @@ $ mvn clean install
 implementation 'io.leego:mypages:0.4.0'
 ```
 
-## Supported
+## 数据库
 
-|Database|Supported|Database|Supported|Database|Supported|
+|数据库|支持|数据库|支持|数据库|支持|
 |:-:|:-:|:-:|:-:|:-:|:-:|
 |MySQL|✔|PostgreSQL|✔|Oracle|✔|
 |MariaDB|✔|SQLite|✔|DB2|✔|
@@ -45,14 +44,14 @@ implementation 'io.leego:mypages:0.4.0'
 |HyperSQL|✔|Informix|✔|TiDB|✔|
 |SQL Server|✔|Apache Hive|✔|
 
-## Documentation
+## 文档
 
 > * [User Guide (English)](docs/USERGUIDE.md)
 > * [用户指南 (中文版)](docs/USERGUIDE.ZH_CN.md)
 
-## Contact
+## 交流
 
-> * Bugs & Issues: [Click Here](https://github.com/yihleego/mypages/issues)
+> * 问题与意见: [点击这里](https://github.com/yihleego/mypages/issues)
 
 ## License
 MyPages is under the Apache 2.0 license. See the [LICENSE](LICENSE.txt) file for details.

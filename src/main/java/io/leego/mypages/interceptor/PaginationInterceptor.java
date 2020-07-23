@@ -14,11 +14,11 @@ import io.leego.mypages.dialect.DialectFactory;
 import io.leego.mypages.dialect.SqlDialect;
 import io.leego.mypages.exception.PaginationException;
 import io.leego.mypages.util.BeanUtils;
+import io.leego.mypages.util.Pageable;
 import io.leego.mypages.util.PaginationCollectionFactory;
 import io.leego.mypages.util.PaginationParam;
 import io.leego.mypages.util.PaginationUnrefinedParam;
 import io.leego.mypages.util.ReflectUtils;
-import io.leego.mypages.util.Search;
 import io.leego.mypages.util.StringUtils;
 import org.apache.ibatis.cache.CacheKey;
 import org.apache.ibatis.executor.Executor;
@@ -269,7 +269,7 @@ public class PaginationInterceptor implements Interceptor {
      * 1.<code>returnType</code> is assignable from {@link Collection}.<p>
      * 2.Annotation {@link DisablePagination} is absent.<p>
      * 3.{@link #obtainParamsFromFields} equals <code>true</code> or
-     * <code>parameter</code> extends {@link Search},
+     * <code>parameter</code> extends {@link Pageable},
      * Annotation {@link Pagination} is present.
      * @param parameter  The parameter
      * @param returnType Return type
@@ -282,7 +282,7 @@ public class PaginationInterceptor implements Interceptor {
             return false;
         }
         return obtainParamsFromFields
-                || parameter instanceof Search
+                || parameter instanceof Pageable
                 || parameter.getClass().getAnnotation(Pagination.class) != null;
     }
 
@@ -345,14 +345,14 @@ public class PaginationInterceptor implements Interceptor {
         Integer rows;
         boolean usePageSize;
         boolean useOffsetRows;
-        if (parameter instanceof Search) {
-            Search search = (Search) parameter;
-            page = search.getPage();
-            size = search.getSize();
-            offset = search.getOffset();
-            rows = search.getRows();
-            countColumn = search.getCountColumn();
-            countMethodName = search.getCountMethodName();
+        if (parameter instanceof Pageable) {
+            Pageable pageable = (Pageable) parameter;
+            page = pageable.getPage();
+            size = pageable.getSize();
+            offset = pageable.getOffset();
+            rows = pageable.getRows();
+            countColumn = pageable.getCountColumn();
+            countMethodName = pageable.getCountMethodName();
         } else if (unrefinedParam.isMapType()) {
             Map parameterMap = (Map) parameter;
             page = parseInteger(getMapValue(parameterMap, this.pageFieldName));
@@ -423,8 +423,8 @@ public class PaginationInterceptor implements Interceptor {
      * @return {@link PaginationUnrefinedParam}
      */
     private PaginationUnrefinedParam getPaginationUnrefinedParam(Object parameter) {
-        // There may be an object that extends Search.
-        if (parameter instanceof Search) {
+        // There may be an object that extends Pageable.
+        if (parameter instanceof Pageable) {
             return buildPaginationUnrefinedParam(parameter, false);
         }
         // There may be a map.
