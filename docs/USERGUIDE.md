@@ -1,6 +1,6 @@
 # 1. Introduction
 
-MyPages is a java based, open source pagination plugin for MyBatis that simplifies database paging queries.
+MyPages is a java based, open source pagination plugin for [MyBatis](https://github.com/mybatis/mybatis-3) that simplifies database paging queries.
 
 # 2. Getting Started
 

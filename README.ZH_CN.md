@@ -48,6 +48,7 @@ implementation 'io.leego:mypages:0.4.0'
 
 > * [User Guide (English)](docs/USERGUIDE.md)
 > * [用户指南 (中文版)](docs/USERGUIDE.ZH_CN.md)
+> * [MyPages Spring Boot Starter](https://github.com/yihleego/mypages-spring-boot-starter)
 
 ## 交流
 
