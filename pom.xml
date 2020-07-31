@@ -12,6 +12,14 @@
         <version>7</version>
     </parent>
 
+    <groupId>io.leego</groupId>
+    <artifactId>mypages</artifactId>
+    <version>0.5.0</version>
+    <packaging>jar</packaging>
+    <name>${project.artifactId}</name>
+    <description>MyPages is a java based, open source pagination plugin for MyBatis that simplifies database paging queries.</description>
+    <url>https://github.com/yihleego/mypages</url>
+
     <licenses>
         <license>
             <name>The Apache Software License, Version 2.0</name>
@@ -34,11 +42,10 @@
         </developer>
     </developers>
 
-    <groupId>io.leego</groupId>
-    <artifactId>mypages</artifactId>
-    <version>0.4.0</version>
-    <packaging>jar</packaging>
-    <name>mypages</name>
+    <issueManagement>
+        <system>Github Issues</system>
+        <url>https://github.com/yihleego/mypages/issues</url>
+    </issueManagement>
 
     <properties>
         <java.version>1.8</java.version>

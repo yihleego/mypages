@@ -19,7 +19,7 @@ $ mvn clean install
 
 ```xml
 <properties>
-    <mypages.version>0.4.0</mypages.version>
+    <mypages.version>0.5.0</mypages.version>
 </properties>
 
 <dependency>
@@ -32,7 +32,7 @@ $ mvn clean install
 ### Gradle
 
 ```xml
-implementation 'io.leego:mypages:0.4.0'
+implementation 'io.leego:mypages:0.5.0'
 ```
 
 ## Supported

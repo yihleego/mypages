@@ -12,7 +12,7 @@ MyPages是Java实现基于[MyBatis](https://github.com/mybatis/mybatis-3)的开�
 
 ```xml
 <properties>
-    <mypages.version>0.4.0</mypages.version>
+    <mypages.version>0.5.0</mypages.version>
 </properties>
 
 <dependency>
@@ -25,7 +25,7 @@ MyPages是Java实现基于[MyBatis](https://github.com/mybatis/mybatis-3)的开�
 ## Gradle
 
 ```xml
-implementation 'io.leego:mypages:0.4.0'
+implementation 'io.leego:mypages:0.5.0'
 ```
 
 # 4. 快速设置
