@@ -18,7 +18,7 @@ $ mvn clean install
 
 ```xml
 <properties>
-    <mypages.version>0.5.0</mypages.version>
+    <mypages.version>0.6.0</mypages.version>
 </properties>
 
 <dependency>
@@ -31,7 +31,7 @@ $ mvn clean install
 ### Gradle
 
 ```xml
-implementation 'io.leego:mypages:0.5.0'
+implementation 'io.leego:mypages:0.6.0'
 ```
 
 ## 数据库
@@ -48,7 +48,8 @@ implementation 'io.leego:mypages:0.5.0'
 
 > * [User Guide (English)](docs/USERGUIDE.md)
 > * [用户指南 (中文版)](docs/USERGUIDE.ZH_CN.md)
-> * [MyPages Spring Boot Starter](https://github.com/yihleego/mypages-spring-boot-starter)
+> * [MyPages-Spring-Boot-Starter (English)](docs/STARTER_USERGUIDE.md)
+> * [MyPages-Spring-Boot-Starter (中文版)](docs/STARTER_USERGUIDE.ZH_CN.md)
 
 ## 交流
 

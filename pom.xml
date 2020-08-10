@@ -7,9 +7,9 @@
     <modelVersion>4.0.0</modelVersion>
 
     <groupId>io.leego</groupId>
-    <artifactId>mypages</artifactId>
-    <version>0.5.0</version>
-    <packaging>jar</packaging>
+    <artifactId>mypages-parent</artifactId>
+    <version>0.6.0</version>
+    <packaging>pom</packaging>
     <name>${project.artifactId}</name>
     <description>MyPages is a java based, open source pagination plugin for MyBatis that simplifies database paging queries.</description>
     <url>https://github.com/yihleego/mypages</url>
@@ -52,6 +52,11 @@
         </snapshotRepository>
     </distributionManagement>
 
+    <modules>
+        <module>mypages</module>
+        <module>mypages-spring-boot-starter</module>
+    </modules>
+
     <properties>
         <java.version>1.8</java.version>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
@@ -61,6 +66,7 @@
         <maven-gpg-plugin.version>1.6</maven-gpg-plugin.version>
         <nexus-staging-maven-plugin.version>1.6.8</nexus-staging-maven-plugin.version>
         <mybatis.version>3.5.5</mybatis.version>
+        <mybatis-spring-boot-autoconfigure.version>2.1.3</mybatis-spring-boot-autoconfigure.version>
         <druid.version>1.1.23</druid.version>
     </properties>
 
@@ -81,19 +87,6 @@
                             <target>${java.version}</target>
                             <encoding>${project.build.sourceEncoding}</encoding>
                         </configuration>
-                    </plugin>
-                    <plugin>
-                        <groupId>org.apache.maven.plugins</groupId>
-                        <artifactId>maven-source-plugin</artifactId>
-                        <version>${maven-source-plugin.version}</version>
-                        <executions>
-                            <execution>
-                                <id>attach-sources</id>
-                                <goals>
-                                    <goal>jar-no-fork</goal>
-                                </goals>
-                            </execution>
-                        </executions>
                     </plugin>
                 </plugins>
             </build>
@@ -168,19 +161,29 @@
         </profile>
     </profiles>
 
-    <dependencies>
-        <dependency>
-            <groupId>org.mybatis</groupId>
-            <artifactId>mybatis</artifactId>
-            <version>${mybatis.version}</version>
-            <scope>compile</scope>
-            <optional>true</optional>
-        </dependency>
-        <dependency>
-            <groupId>com.alibaba</groupId>
-            <artifactId>druid</artifactId>
-            <version>${druid.version}</version>
-        </dependency>
-    </dependencies>
+    <dependencyManagement>
+        <dependencies>
+            <dependency>
+                <groupId>io.leego</groupId>
+                <artifactId>mypages</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.mybatis</groupId>
+                <artifactId>mybatis</artifactId>
+                <version>${mybatis.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.mybatis.spring.boot</groupId>
+                <artifactId>mybatis-spring-boot-autoconfigure</artifactId>
+                <version>${mybatis-spring-boot-autoconfigure.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.alibaba</groupId>
+                <artifactId>druid</artifactId>
+                <version>${druid.version}</version>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
 
 </project>

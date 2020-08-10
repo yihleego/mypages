@@ -12,7 +12,7 @@ Please make sure the Java version is 1.8 and above.
 
 ```xml
 <properties>
-    <mypages.version>0.5.0</mypages.version>
+    <mypages.version>0.6.0</mypages.version>
 </properties>
 
 <dependency>
@@ -25,7 +25,7 @@ Please make sure the Java version is 1.8 and above.
 ## Gradle
 
 ```xml
-implementation 'io.leego:mypages:0.5.0'
+implementation 'io.leego:mypages:0.6.0'
 ```
 
 # 4. Quick Setup
@@ -35,10 +35,11 @@ Notice that the PaginationInterceptor requires SqlDialect. It can be any SqlDial
 ## MyBatis SqlSessionFactoryBean
 
 ```java
-// Plugins
-PaginationInterceptor paginationInterceptor = new PaginationInterceptor(SqlDialect.MYSQL);
+PaginationSettings settings = PaginationSettings.builder()
+    .sqlDialect(SqlDialect.MYSQL)
+    .build();
+PaginationInterceptor paginationInterceptor = new PaginationInterceptor(settings);
 Interceptor[] plugins = new Interceptor[]{paginationInterceptor};
-// SqlSessionFactoryBean
 SqlSessionFactoryBean sqlSessionFactoryBean = new SqlSessionFactoryBean();
         sqlSessionFactoryBean.setDataSource(dataSource);
         sqlSessionFactoryBean.setPlugins(plugins);
@@ -53,13 +54,17 @@ In MyBatis-Spring, an SqlSessionFactoryBean is used to create an SqlSessionFacto
 ### Spring XML
 
 ```xml
-<bean id="sqlSessionFactoryBean" class="org.mybatis.spring.SqlSessionFactoryBean">
-    <property name="dataSource" ref="dataSource"/>
-    <property name="plugins">
-        <bean class="io.leego.mypages.interceptor.PaginationInterceptor">
+<bean id="paginationInterceptor" class="io.leego.mypages.interceptor.PaginationInterceptor">
+    <constructor-arg name="settings">
+        <bean class="io.leego.mypages.interceptor.PaginationSettings">
             <property name="sqlDialect" value="MYSQL"/>
         </bean>
-    </property>
+    </constructor-arg>
+</bean>
+
+<bean id="sqlSessionFactoryBean" class="org.mybatis.spring.SqlSessionFactoryBean">
+    <property name="dataSource" ref="dataSource"/>
+    <property name="plugins" value="paginationInterceptor"/>
 </bean>
 ```
 
@@ -70,10 +75,7 @@ In MyBatis-Spring, an SqlSessionFactoryBean is used to create an SqlSessionFacto
 public class MybatisConfiguration {
     @Bean
     public SqlSessionFactory sqlSessionFactory(DataSource dataSource) throws Exception {
-        // Plugins
-        PaginationInterceptor paginationInterceptor = new PaginationInterceptor(SqlDialect.MYSQL);
-        Interceptor[] plugins = new Interceptor[]{paginationInterceptor};
-        // SqlSessionFactoryBean
+        Interceptor[] plugins = new Interceptor[]{paginationInterceptor()};
         SqlSessionFactoryBean sqlSessionFactoryBean = new SqlSessionFactoryBean();
         sqlSessionFactoryBean.setDataSource(dataSource);
         sqlSessionFactoryBean.setPlugins(plugins);
@@ -82,14 +84,17 @@ public class MybatisConfiguration {
 
     @Bean
     public PaginationInterceptor paginationInterceptor() {
-        return new PaginationInterceptor(SqlDialect.MYSQL);
+        PaginationSettings settings = PaginationSettings.builder()
+            .sqlDialect(SqlDialect.MYSQL)
+            .build();
+        return new PaginationInterceptor(settings);
     }
 }
 ```
 
 ### Spring Boot Starter
 
-> * Please see: [mypages-spring-boot-starter](https://github.com/yihleego/mypages-spring-boot-starter)
+> * Please see: [mypages-spring-boot-starter](STARTER_USERGUIDE.md)
 
 # 5. Quick Start
 
@@ -161,7 +166,7 @@ public class Pageable {
 }
 ```
 
-More annotations: ```@CountColumn```, ```@CountMethodName```, ```@DisableCount```, ```@DisablePagination```.
+More annotations: ```@CountExpr```, ```@CountMethodName```, ```@DisableCount```, ```@DisablePagination```.
 
 ## PaginationInterceptor Configuration (Recommended)
 
@@ -173,8 +178,9 @@ public class Pageable {
     private Integer size;
     private Integer offset;
     private Integer rows;
-    private String column;
-    private boolean allowCount;
+    private String countExpr;
+    private String countMethodName;
+    private boolean enableCount;
     /* getter setter */
 }
 ```
@@ -182,33 +188,46 @@ public class Pageable {
 ### Obtains the page and size values from fields
 
 ```java
-PaginationInterceptor interceptor = new PaginationInterceptor(SqlDialect.MYSQL)
-    .pagingFields("page", "size");
+PaginationSettings settings = PaginationSettings.builder()
+    .sqlDialect(SqlDialect.MYSQL)
+    .pageField("page")
+    .sizeField("size")
+    .build();
+PaginationInterceptor interceptor = new PaginationInterceptor(settings);
 ```
 
 ### Obtains the offset and rows values from fields
 
 ```java
-PaginationInterceptor interceptor = new PaginationInterceptor(SqlDialect.MYSQL)
-    .offsetRowsFields("offset", "rows");
+PaginationSettings settings = PaginationSettings.builder()
+    .sqlDialect(SqlDialect.MYSQL)
+    .offsetField("offset")
+    .rowsField("rows")
+    .build();
+PaginationInterceptor interceptor = new PaginationInterceptor(settings);
 ```
 
 ### More configurations.
 
 ```java
-PaginationInterceptor interceptor = new PaginationInterceptor()
+PaginationSettings settings = PaginationSettings.builder()
     .sqlDialect(SqlDialect.MYSQL) // Specifies sql dialect.
-    .pagingFields("page", "size") // Obtains the page and size values from fields.
-    .offsetRowsFields("offset", "rows") // Obtains the offset and rows values from fields.
-    .countColumn("*") // The count column name, the default value is "*".
-    .countColumnFieldName("column") // Obtains the count column name from fields.
-    .enableCountFieldName("allowCount") // Whether to enable count.
+    .countExpr("*") // The column name or expression, the default value is <code>"*"</code>.
+    .pageField("page") // Obtains the page value from parameter.
+    .sizeField("size") // Obtains the size value from parameter.
+    .offsetField("offset") // Obtains the offset value from parameter.
+    .rowsField("rows") // Obtains the rows value from parameter.
+    .countExprField("countExpr") // Obtains the count expression from parameter.
+    .countMethodNameField("countMethodName") // Obtains the count method name from parameter.
+    .enableCountField("enableCount") // Whether to enable count.
     .skipQueryIfCountEqualsZero(true) // Whether to skip query if total quantity equals zero.
+    .useGeneratedIfCountMethodIsMissing(true) // Whether to use generated if the specified count method is missing.
     .defaultPage(1) // Replaces the page with default-page if the page is null or less than 1.
-    .defaultSize(20) // Replaces the size with default-size if the size is null or less than 1.
-    .maxPage(9999) // Replaces the page with max-page if the page is greater than max-page.
-    .maxSize(1000); // Replaces the size with max-size if the size is greater than max-size.
-    
+    .defaultSize(10) // Replaces the size with default-size if the size is null or less than 1.
+    .maxPage(10000) // Replaces the page with max-page if the page is greater than max-page.
+    .maxSize(10000) // Replaces the size with max-size if the size is greater than max-size.
+    .build();
+PaginationInterceptor interceptor = new PaginationInterceptor(settings);
 ```
 
 ## Extends ```io.leego.mypages.util.Pageable```
@@ -265,9 +284,13 @@ public class Pageable {
 ```
 
 ```java
-PaginationInterceptor pagingPlugin = new PaginationInterceptor(SqlDialect.MYSQL)
-    .pagingFields("page", "size")
-    .specifyCountMethod("countMethodName");
+PaginationSettings settings = PaginationSettings.builder()
+    .sqlDialect(SqlDialect.MYSQL)
+    .pageField("page")
+    .sizeField("size")
+    .countMethodNameField("countMethodName")
+    .build();
+PaginationInterceptor interceptor = new PaginationInterceptor(settings);
 ```
 
 ## Call query and count methods:
@@ -321,11 +344,14 @@ public class Pageable {}
 ## PaginationInterceptor Configuration
 
 ```java
-PaginationInterceptor interceptor = new PaginationInterceptor(SqlDialect.MYSQL)
+PaginationSettings settings = PaginationSettings.builder()
+    .sqlDialect(SqlDialect.MYSQL)
     .defaultPage(1)
     .defaultSize(10)
-    .maxPage(1000)
-    .maxSize(1000);
+    .maxPage(10000)
+    .maxSize(10000)
+    .build();
+PaginationInterceptor interceptor = new PaginationInterceptor(settings);
 ```
 
 # 9. Query Results

@@ -21,7 +21,3 @@ build/
 nbbuild/
 nbdist/
 .nb-gradle/
-
-### custom ###
-logs
-*.log

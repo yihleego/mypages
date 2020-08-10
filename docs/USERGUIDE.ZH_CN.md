@@ -12,7 +12,7 @@ MyPages是Java实现基于[MyBatis](https://github.com/mybatis/mybatis-3)的开�
 
 ```xml
 <properties>
-    <mypages.version>0.5.0</mypages.version>
+    <mypages.version>0.6.0</mypages.version>
 </properties>
 
 <dependency>
@@ -25,7 +25,7 @@ MyPages是Java实现基于[MyBatis](https://github.com/mybatis/mybatis-3)的开�
 ## Gradle
 
 ```xml
-implementation 'io.leego:mypages:0.5.0'
+implementation 'io.leego:mypages:0.6.0'
 ```
 
 # 4. 快速设置
@@ -35,10 +35,11 @@ implementation 'io.leego:mypages:0.5.0'
 ## MyBatis SqlSessionFactoryBean
 
 ```java
-// Plugins
-PaginationInterceptor paginationInterceptor = new PaginationInterceptor(SqlDialect.MYSQL);
+PaginationSettings settings = PaginationSettings.builder()
+    .sqlDialect(SqlDialect.MYSQL)
+    .build();
+PaginationInterceptor paginationInterceptor = new PaginationInterceptor(settings);
 Interceptor[] plugins = new Interceptor[]{paginationInterceptor};
-// SqlSessionFactoryBean
 SqlSessionFactoryBean sqlSessionFactoryBean = new SqlSessionFactoryBean();
         sqlSessionFactoryBean.setDataSource(dataSource);
         sqlSessionFactoryBean.setPlugins(plugins);
@@ -53,13 +54,17 @@ SqlSessionFactoryBean sqlSessionFactoryBean = new SqlSessionFactoryBean();
 ### Spring XML
 
 ```xml
-<bean id="sqlSessionFactoryBean" class="org.mybatis.spring.SqlSessionFactoryBean">
-    <property name="dataSource" ref="dataSource"/>
-    <property name="plugins">
-        <bean class="io.leego.mypages.interceptor.PaginationInterceptor">
+<bean id="paginationInterceptor" class="io.leego.mypages.interceptor.PaginationInterceptor">
+    <constructor-arg name="settings">
+        <bean class="io.leego.mypages.interceptor.PaginationSettings">
             <property name="sqlDialect" value="MYSQL"/>
         </bean>
-    </property>
+    </constructor-arg>
+</bean>
+
+<bean id="sqlSessionFactoryBean" class="org.mybatis.spring.SqlSessionFactoryBean">
+    <property name="dataSource" ref="dataSource"/>
+    <property name="plugins" value="paginationInterceptor"/>
 </bean>
 ```
 
@@ -70,10 +75,7 @@ SqlSessionFactoryBean sqlSessionFactoryBean = new SqlSessionFactoryBean();
 public class MybatisConfiguration {
     @Bean
     public SqlSessionFactory sqlSessionFactory(DataSource dataSource) throws Exception {
-        // Plugins
-        PaginationInterceptor paginationInterceptor = new PaginationInterceptor(SqlDialect.MYSQL);
-        Interceptor[] plugins = new Interceptor[]{paginationInterceptor};
-        // SqlSessionFactoryBean
+        Interceptor[] plugins = new Interceptor[]{paginationInterceptor()};
         SqlSessionFactoryBean sqlSessionFactoryBean = new SqlSessionFactoryBean();
         sqlSessionFactoryBean.setDataSource(dataSource);
         sqlSessionFactoryBean.setPlugins(plugins);
@@ -82,14 +84,17 @@ public class MybatisConfiguration {
 
     @Bean
     public PaginationInterceptor paginationInterceptor() {
-        return new PaginationInterceptor(SqlDialect.MYSQL);
+        PaginationSettings settings = PaginationSettings.builder()
+            .sqlDialect(SqlDialect.MYSQL)
+            .build();
+        return new PaginationInterceptor(settings);
     }
 }
 ```
 
 ### Spring Boot Starter
 
-> * 请使用: [mypages-spring-boot-starter](https://github.com/yihleego/mypages-spring-boot-starter)
+> * 请使用: [mypages-spring-boot-starter](STARTER_USERGUIDE.ZH_CN.md)
 
 # 5. 快速开始
 
@@ -161,7 +166,7 @@ public class Pageable {
 }
 ```
 
-更多注解: ```@CountColumn```, ```@CountMethodName```, ```@DisableCount```, ```@DisablePagination```.
+更多注解: ```@CountExpr```, ```@CountMethodName```, ```@DisableCount```, ```@DisablePagination```.
 
 ## PaginationInterceptor配置 (推荐)
 
@@ -173,8 +178,9 @@ public class Pageable {
     private Integer size;
     private Integer offset;
     private Integer rows;
-    private String column;
-    private boolean allowCount;
+    private String countExpr;
+    private String countMethodName;
+    private boolean enableCount;
     /* getter setter */
 }
 ```
@@ -182,33 +188,46 @@ public class Pageable {
 ### 从参数字段中获取page和size值
 
 ```java
-PaginationInterceptor interceptor = new PaginationInterceptor(SqlDialect.MYSQL)
-    .pagingFields("page", "size");
+PaginationSettings settings = PaginationSettings.builder()
+    .sqlDialect(SqlDialect.MYSQL)
+    .pageField("page")
+    .sizeField("size")
+    .build();
+PaginationInterceptor interceptor = new PaginationInterceptor(settings);
 ```
 
 ### 从参数字段中获取offset和rows值
 
 ```java
-PaginationInterceptor interceptor = new PaginationInterceptor(SqlDialect.MYSQL)
-    .offsetRowsFields("offset", "rows");
+PaginationSettings settings = PaginationSettings.builder()
+    .sqlDialect(SqlDialect.MYSQL)
+    .offsetField("offset")
+    .rowsField("rows")
+    .build();
+PaginationInterceptor interceptor = new PaginationInterceptor(settings);
 ```
 
 ### 更多配置
 
 ```java
-PaginationInterceptor interceptor = new PaginationInterceptor()
+PaginationSettings settings = PaginationSettings.builder()
     .sqlDialect(SqlDialect.MYSQL) // 指定SqlDialect。
-    .pagingFields("page", "size") // 从参数字段中获取page和size值。
-    .offsetRowsFields("offset", "rows") // 从参数字段中获取offset和rows值。
-    .countColumn("*") // 设置count字段名称，默认值为"*"。
-    .countColumnFieldName("column") // 从参数字段中获取count字段名称。
-    .enableCountFieldName("allowCount") // 是否启用count。
+    .countExpr("*") // 设置count字段名称，默认值为"*"。
+    .pageField("page") // 从参数字段中获取page值。
+    .sizeField("size") // 从参数字段中获取size值。
+    .offsetField("offset") // 从参数字段中获取offset值。
+    .rowsField("rows") // 从参数字段中获取rows值。
+    .countExprField("countExpr") // 从参数字段中获取count表达式。
+    .countMethodNameField("countMethodName") // 从参数字段中获取自定义count方法名称。
+    .enableCountField("enableCount") // 是否启用count。
     .skipQueryIfCountEqualsZero(true) // 是否跳过count如果总数量为0。
+    .useGeneratedIfCountMethodIsMissing(true) // 是否生成的查询方法如果指定查询方法不存在。
     .defaultPage(1) // 如果page为空或小于1，则用default-page替换page。
-    .defaultSize(20) // 如果size为空或小于1，则用default-size替换size。
-    .maxPage(9999) // 如果page大于max-page，则用max-page替换page。
-    .maxSize(1000); // 如果size大于max-size，则用max-size替换size。
-    
+    .defaultSize(10) // 如果size为空或小于1，则用default-size替换size。
+    .maxPage(10000) // 如果page大于max-page，则用max-page替换page。
+    .maxSize(10000) // 如果size大于max-size，则用max-size替换size。
+    .build();
+PaginationInterceptor interceptor = new PaginationInterceptor(settings);
 ```
 
 ## 继承 ```io.leego.mypages.util.Pageable```
@@ -265,9 +284,13 @@ public class Pageable {
 ```
 
 ```java
-PaginationInterceptor pagingPlugin = new PaginationInterceptor(SqlDialect.MYSQL)
-    .pagingFields("page", "size")
-    .specifyCountMethod("countMethodName");
+PaginationSettings settings = PaginationSettings.builder()
+    .sqlDialect(SqlDialect.MYSQL)
+    .pageField("page")
+    .sizeField("size")
+    .countMethodNameField("countMethodName")
+    .build();
+PaginationInterceptor interceptor = new PaginationInterceptor(settings);
 ```
 
 ## 调用Query和Count方法
@@ -321,11 +344,14 @@ public class Pageable {}
 ## PaginationInterceptor配置
 
 ```java
-PaginationInterceptor interceptor = new PaginationInterceptor(SqlDialect.MYSQL)
+PaginationSettings settings = PaginationSettings.builder()
+    .sqlDialect(SqlDialect.MYSQL)
     .defaultPage(1)
     .defaultSize(10)
-    .maxPage(1000)
-    .maxSize(1000);
+    .maxPage(10000)
+    .maxSize(10000)
+    .build();
+PaginationInterceptor interceptor = new PaginationInterceptor(settings);
 ```
 
 # 9. 查询结果
