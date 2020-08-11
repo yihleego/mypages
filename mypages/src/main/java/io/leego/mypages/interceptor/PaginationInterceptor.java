@@ -64,10 +64,10 @@ public class PaginationInterceptor implements Interceptor {
         if (settings == null || (settings.getDialect() == null && settings.getSqlDialect() == null)) {
             throw new IllegalArgumentException("Dialect is not configured.");
         }
-        if ((settings.getPageFieldName() != null && settings.getSizeFieldName() != null)
-                || (settings.getOffsetFieldName() != null && settings.getRowsFieldName() != null)) {
-            settings.setObtainValuesFromFields(true);
-        }
+        // Whether to obtain values from parameter.
+        settings.setObtainValuesFromFields(
+                (settings.getPageFieldName() != null && settings.getSizeFieldName() != null)
+                        || (settings.getOffsetFieldName() != null && settings.getRowsFieldName() != null));
         this.settings = settings;
         this.dialect = settings.getDialect() != null
                 ? settings.getDialect()
@@ -239,25 +239,12 @@ public class PaginationInterceptor implements Interceptor {
     private boolean isPageable(Object parameter, Class<?> returnType) {
         if (parameter == null
                 || !Collection.class.isAssignableFrom(returnType)
-                || isSimpleType(parameter.getClass())
                 || parameter.getClass().getAnnotation(DisablePagination.class) != null) {
             return false;
         }
         return settings.isObtainValuesFromFields()
                 || parameter instanceof Pageable
                 || parameter.getClass().getAnnotation(Pagination.class) != null;
-    }
-
-    /**
-     * Returns <code>true</code> if it is a simple type.
-     * @param type The type
-     */
-    private boolean isSimpleType(Class<?> type) {
-        return type.isPrimitive()
-                || Number.class.isAssignableFrom(type)
-                || CharSequence.class.isAssignableFrom(type)
-                || type == Character.class
-                || type == Boolean.class;
     }
 
     /**

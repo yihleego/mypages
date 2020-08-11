@@ -8,11 +8,11 @@ Please make sure the Java version is 1.8 and above.
 
 # 3. Dependency
 
-## Maven
+## 3.1 Maven
 
 ```xml
 <properties>
-    <mypages-spring-boot-starter.version>0.6.0</mypages-spring-boot-starter.version>
+    <mypages-spring-boot-starter.version>1.0.0</mypages-spring-boot-starter.version>
 </properties>
 
 <dependency>
@@ -22,15 +22,15 @@ Please make sure the Java version is 1.8 and above.
 </dependency>
 ```
 
-## Gradle
+## 3.2 Gradle
 
 ```xml
-implementation 'io.leego:mypages-spring-boot-starter:0.6.0'
+implementation 'io.leego:mypages-spring-boot-starter:1.0.0'
 ```
 
 # 4. Configuration
 
-Define a class with paging parameters, and configure parameters field names.
+Define a class with paging parameters.
 
 ```java
 public class Pageable {
@@ -40,14 +40,14 @@ public class Pageable {
     private Integer rows;
     private String countExpr;
     private String countMethodName;
-    private boolean enableCount;
+    private Boolean enableCount;
     /* getter setter */
 }
 ```
 
-Notice that the sql-dialect is required. It can be any SqlDialect and should be configured.
+Please notice that the sql-dialect is required.
 
-## Properties
+## 4.1 Properties
 
 ```properties
 spring.mypages.enabled=true
@@ -68,7 +68,7 @@ spring.mypages.max-page=10000
 spring.mypages.max-size=10000
 ```
 
-## Yaml
+## 4.2 Yaml
 
 ```yaml
 spring:

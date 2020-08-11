@@ -27,7 +27,7 @@ public final class PaginationSettings {
     private String countMethodNameFieldName;
     /** The enable count field name. */
     private String enableCountFieldName;
-    /** Whether to obtain values from parameter by reflection. */
+    /** Whether to obtain values from parameter. */
     private boolean obtainValuesFromFields = false;
     /** Whether to skip query if total value equals zero. */
     private boolean skipQueryIfCountEqualsZero = true;
@@ -43,6 +43,14 @@ public final class PaginationSettings {
     private int maxSize = -1;
 
     public PaginationSettings() {
+    }
+
+    public PaginationSettings(Dialect dialect) {
+        this.dialect = dialect;
+    }
+
+    public PaginationSettings(SqlDialect sqlDialect) {
+        this.sqlDialect = sqlDialect;
     }
 
     public PaginationSettings(Dialect dialect, SqlDialect sqlDialect, String countExpr, String pageFieldName, String sizeFieldName, String offsetFieldName, String rowsFieldName, String countExprFieldName, String countMethodNameFieldName, String enableCountFieldName, boolean obtainValuesFromFields, boolean skipQueryIfCountEqualsZero, boolean useGeneratedIfCountMethodIsMissing, int defaultPage, int defaultSize, int maxPage, int maxSize) {

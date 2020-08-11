@@ -8,11 +8,11 @@ MyPages是Java实现基于[MyBatis](https://github.com/mybatis/mybatis-3)的开�
 
 # 3. 依赖
 
-## Maven
+## 3.1 Maven
 
 ```xml
 <properties>
-    <mypages-spring-boot-starter.version>0.6.0</mypages-spring-boot-starter.version>
+    <mypages-spring-boot-starter.version>1.0.0</mypages-spring-boot-starter.version>
 </properties>
 
 <dependency>
@@ -22,10 +22,10 @@ MyPages是Java实现基于[MyBatis](https://github.com/mybatis/mybatis-3)的开�
 </dependency>
 ```
 
-## Gradle
+## 3.2 Gradle
 
 ```xml
-implementation 'io.leego:mypages-spring-boot-starter:0.6.0'
+implementation 'io.leego:mypages-spring-boot-starter:1.0.0'
 ```
 
 # 4. 配置
@@ -40,14 +40,14 @@ public class Pageable {
     private Integer rows;
     private String countExpr;
     private String countMethodName;
-    private boolean enableCount;
+    private Boolean enableCount;
     /* getter setter */
 }
 ```
 
-请注意sql-dialect，它可以是任何SqlDialect且必须被配置。
+请注意sql-dialect必须被配置。
 
-## Properties
+## 4.1 Properties
 
 ```properties
 spring.mypages.enabled=true
@@ -68,7 +68,7 @@ spring.mypages.max-page=10000
 spring.mypages.max-size=10000
 ```
 
-## Yaml
+## 4.2 Yaml
 
 ```yaml
 spring:

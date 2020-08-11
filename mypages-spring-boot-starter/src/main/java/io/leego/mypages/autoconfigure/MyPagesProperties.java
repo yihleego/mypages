@@ -28,8 +28,6 @@ public class MyPagesProperties {
     private String countMethodNameField;
     /** The enable count field name. */
     private String enableCountField;
-    /** Whether to obtain values from parameter by reflection. */
-    private boolean obtainValuesFromFields = false;
     /** Whether to skip query if total value equals zero. */
     private boolean skipQueryIfCountEqualsZero = true;
     /** Whether to use generated if the specified count method is missing. */
@@ -121,14 +119,6 @@ public class MyPagesProperties {
 
     public void setEnableCountField(String enableCountField) {
         this.enableCountField = enableCountField;
-    }
-
-    public boolean isObtainValuesFromFields() {
-        return obtainValuesFromFields;
-    }
-
-    public void setObtainValuesFromFields(boolean obtainValuesFromFields) {
-        this.obtainValuesFromFields = obtainValuesFromFields;
     }
 
     public boolean isSkipQueryIfCountEqualsZero() {

@@ -8,11 +8,11 @@ MyPages是Java实现基于[MyBatis](https://github.com/mybatis/mybatis-3)的开�
 
 # 3. 依赖
 
-## Maven
+## 3.1 Maven
 
 ```xml
 <properties>
-    <mypages.version>0.6.0</mypages.version>
+    <mypages.version>1.0.0</mypages.version>
 </properties>
 
 <dependency>
@@ -22,36 +22,33 @@ MyPages是Java实现基于[MyBatis](https://github.com/mybatis/mybatis-3)的开�
 </dependency>
 ```
 
-## Gradle
+## 3.2 Gradle
 
 ```xml
-implementation 'io.leego:mypages:0.6.0'
+implementation 'io.leego:mypages:1.0.0'
 ```
 
 # 4. 快速设置
 
-请注意，PaginationInterceptor需要配置SqlDialect，它可以是任何SqlDialect且必须被配置。
+请注意sql-dialect必须被配置。
 
-## MyBatis SqlSessionFactoryBean
+## 4.1 MyBatis SqlSessionFactoryBean
 
 ```java
-PaginationSettings settings = PaginationSettings.builder()
-    .sqlDialect(SqlDialect.MYSQL)
-    .build();
+PaginationSettings settings = new PaginationSettings(SqlDialect.MYSQL);
 PaginationInterceptor paginationInterceptor = new PaginationInterceptor(settings);
 Interceptor[] plugins = new Interceptor[]{paginationInterceptor};
 SqlSessionFactoryBean sqlSessionFactoryBean = new SqlSessionFactoryBean();
-        sqlSessionFactoryBean.setDataSource(dataSource);
-        sqlSessionFactoryBean.setPlugins(plugins);
+sqlSessionFactoryBean.setPlugins(plugins);
 ```
 
-## Spring
+## 4.2 Spring
 
 要在Spring中使用MyBatis，至少需要在Spring应用程序上下文中定义两个东西：SqlSessionFactory对象和至少一个mapper接口。
 
 在MyBatis-Spring中，SqlSessionFactoryBean用于创建SqlSessionFactory。要配置工厂bean，请在Spring配置文件中放入以下内容：
 
-### Spring XML
+## 4.3 Spring XML
 
 ```xml
 <bean id="paginationInterceptor" class="io.leego.mypages.interceptor.PaginationInterceptor">
@@ -68,7 +65,7 @@ SqlSessionFactoryBean sqlSessionFactoryBean = new SqlSessionFactoryBean();
 </bean>
 ```
 
-### Spring Boot
+## 4.4 Spring Boot
 
 ```java
 @Configuration
@@ -84,15 +81,13 @@ public class MybatisConfiguration {
 
     @Bean
     public PaginationInterceptor paginationInterceptor() {
-        PaginationSettings settings = PaginationSettings.builder()
-            .sqlDialect(SqlDialect.MYSQL)
-            .build();
+        PaginationSettings settings = new PaginationSettings(SqlDialect.MYSQL);
         return new PaginationInterceptor(settings);
     }
 }
 ```
 
-### Spring Boot Starter
+## 4.5 Spring Boot Starter
 
 > * 请使用: [mypages-spring-boot-starter](STARTER_USERGUIDE.ZH_CN.md)
 
@@ -147,7 +142,7 @@ public class QueryTests {
 
 # 6. 启用分页
 
-## 注解 (推荐)
+## 6.1 注解 (推荐)
 
 使用 ```@Pagination```, ```@Page```, ```@Size```, ```@Offset```, ```@Rows``` 注解.
 
@@ -168,24 +163,9 @@ public class Pageable {
 
 更多注解: ```@CountExpr```, ```@CountMethodName```, ```@DisableCount```, ```@DisablePagination```.
 
-## PaginationInterceptor配置 (推荐)
+## 6.2 PaginationInterceptor配置 (推荐)
 
-使用分页参数定义一个类，并配置参数字段名。
-
-```java
-public class Pageable {
-    private Integer page;
-    private Integer size;
-    private Integer offset;
-    private Integer rows;
-    private String countExpr;
-    private String countMethodName;
-    private boolean enableCount;
-    /* getter setter */
-}
-```
-
-### 从参数字段中获取page和size值
+配置拦截器：
 
 ```java
 PaginationSettings settings = PaginationSettings.builder()
@@ -196,15 +176,103 @@ PaginationSettings settings = PaginationSettings.builder()
 PaginationInterceptor interceptor = new PaginationInterceptor(settings);
 ```
 
-### 从参数字段中获取offset和rows值
+### 6.2.1 Define classes
+
+假设存在一个带分页参数的类：
 
 ```java
-PaginationSettings settings = PaginationSettings.builder()
-    .sqlDialect(SqlDialect.MYSQL)
-    .offsetField("offset")
-    .rowsField("rows")
-    .build();
-PaginationInterceptor interceptor = new PaginationInterceptor(settings);
+public class Pageable {
+    private Integer page;
+    private Integer size;
+
+    public Pageable(Integer page, Integer size) {
+        this.page = page;
+        this.size = size;
+    }
+    /* getter setter */
+}
+```
+
+假设存在如下定义的Mapper：
+
+```java
+public interface FooMapper {
+    @Select("SELECT * FROM foo")
+    List<Foo> query(Pageable pageable);
+}
+```
+
+调用查询方法：
+
+```java
+import io.leego.mypages.util.Page;
+
+@Service
+public class QueryTests {
+    @Autowired
+    private FooMapper fooMapper;
+
+    public Page<Foo> query() {
+        return Page.of(fooMapper.query(new Pageable(1, 10)));
+    }
+}
+```
+
+### 6.2.2 MyBatis ```@Param```
+
+假设存在如下定义的Mapper：
+
+```java
+public interface FooMapper {
+    @Select("SELECT * FROM foo")
+    List<Foo> query(@Param("page") Integer page, @Param("size") Integer size);
+}
+```
+
+调用查询方法：
+
+```java
+import io.leego.mypages.util.Page;
+
+@Service
+public class QueryTests {
+    @Autowired
+    private FooMapper fooMapper;
+
+    public Page<Foo> query() {
+        return Page.of(fooMapper.query(1, 10));
+    }
+}
+```
+
+### 6.2.3 Map
+
+假设存在如下定义的Mapper：
+
+```java
+public interface FooMapper {
+    @Select("SELECT * FROM foo")
+    List<Foo> query(Map map);
+}
+```
+
+调用查询方法：
+
+```java
+import io.leego.mypages.util.Page;
+
+@Service
+public class QueryTests {
+    @Autowired
+    private FooMapper fooMapper;
+
+    public Page<Foo> query() {
+        Map<String, Object> map = new HashMap<>();
+        map.put("size", 1);
+        map.put("page", 10);
+        return Page.of(fooMapper.query(map));
+    }
+}
 ```
 
 ### 更多配置
@@ -230,22 +298,18 @@ PaginationSettings settings = PaginationSettings.builder()
 PaginationInterceptor interceptor = new PaginationInterceptor(settings);
 ```
 
-## 继承 ```io.leego.mypages.util.Pageable```
+## 6.3 继承 ```io.leego.mypages.util.Pageable```
 
 定义一个继承 ```io.leego.mypages.util.Pageable```的类.
 
 ```java
 public class PageableDTO extends io.leego.mypages.util.Pageable {
-    private String name;
-    /* getter setter */
 }
 ```
 
 # 7. 使用自定义Count方法
 
-## 注解
-
-假设存在如下定义的类：
+## 7.1 注解
 
 ```java
 @Pagination
@@ -266,7 +330,7 @@ public class Pageable {
 }
 ```
 
-## PaginationInterceptor配置
+## 7.2 PaginationInterceptor配置
 
 ```java
 public class Pageable {
@@ -293,7 +357,7 @@ PaginationSettings settings = PaginationSettings.builder()
 PaginationInterceptor interceptor = new PaginationInterceptor(settings);
 ```
 
-## 调用Query和Count方法
+## 7.3 调用Query和Count方法
 
 假设存在如下定义的Mapper：
 
@@ -319,7 +383,7 @@ public class QueryTests {
 
     public Page<Foo> query() {
         // Specifies the count method name.
-         return Page.of(fooMapper.query(new Pageable(1, 10, "count")));
+        return Page.of(fooMapper.query(new Pageable(1, 10, "count")));
     }
 }
 ```
@@ -328,20 +392,20 @@ public class QueryTests {
   
 如果分页参数无效，需要合理化参数，可以设置以下参数:
 
-**defaultPage**: 如果page为空或小于1，则用default-page替换page。
-**defaultSize**: 如果size为空或小于1，则用default-size替换size。
-**maxPage**: 如果page大于max-page，则用max-page替换page。
-**maxSize**: 如果size大于max-size，则用max-size替换size。
+**defaultPage**: 如果page为空或小于1，则用default-page替换page。  
+**defaultSize**: 如果size为空或小于1，则用default-size替换size。  
+**maxPage**: 如果page大于max-page，则用max-page替换page。  
+**maxSize**: 如果size大于max-size，则用max-size替换size。  
 
-可以按如下方式进行配置：
+## 8.1 注解配置
 
-## 注解配置
 ```java
-@Pagination(defaultPage = 1, defaultSize = 10, maxPage = 1000, maxSize = 1000)
-public class Pageable {}
+@Pagination(defaultPage = 1, defaultSize = 10, maxPage = 10000, maxSize = 10000)
+public class Pageable {
+}
 ```
 
-## PaginationInterceptor配置
+## 8.2 PaginationInterceptor配置
 
 ```java
 PaginationSettings settings = PaginationSettings.builder()
@@ -358,32 +422,31 @@ PaginationInterceptor interceptor = new PaginationInterceptor(settings);
 
 如果调用执行成功结束，它将返回一个```PaginationCollection```实例。
 
-## 使用包装 ```io.leego.mypages.util.Page``` 
+## 9.1 使用 ```io.leego.mypages.util.Page``` 
 
-#### 包装
+#### 9.1.1 包装
 
 ```java
 Page<Foo> result = Page.of(fooMapper.query(pageable));
 ```
 
-#### 转化
+#### 9.1.2 转化
 
 ```java
 Page<Bar> result = Page.of(fooMapper.query(pageable), foo -> new Bar(foo));
 ```
 
-#### 映射
+#### 9.1.3 映射
 
 ```java
-Page<Bar> result = Page.of(fooMapper.query(pageable))
-    .map(foo -> new Bar(foo));
+Page<Bar> result = Page.of(fooMapper.query(pageable)).map(foo -> new Bar(foo));
 ```
 
-## 自定义包装类和工具类
+## 9.2 自定义包装类和工具类
 
 参考例子：
 
-#### 包装类
+#### 9.2.1 包装类
 
 ```java
 public class Pagination<T> implements Serializable {
@@ -506,7 +569,7 @@ public class Pagination<T> implements Serializable {
 }
 ```
 
-#### 工具类
+#### 9.2.2 工具类
 
 ```java
 public final class PageUtils {
@@ -575,14 +638,4 @@ public final class PageUtils {
     }
 
 }
-```
-
-使用自定义包装类和工具类：
-
-```java
-Pagination<Foo> result = PageUtils.of(fooMapper.query(pageable));
-```
-
-```java
-Pagination<Bar> result = PageUtils.of(fooMapper.query(pageable), foo -> new Bar(foo));
 ```

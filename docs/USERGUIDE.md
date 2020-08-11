@@ -8,11 +8,11 @@ Please make sure the Java version is 1.8 and above.
 
 # 3. Dependency
 
-## Maven
+## 3.1 Maven
 
 ```xml
 <properties>
-    <mypages.version>0.6.0</mypages.version>
+    <mypages.version>1.0.0</mypages.version>
 </properties>
 
 <dependency>
@@ -22,36 +22,33 @@ Please make sure the Java version is 1.8 and above.
 </dependency>
 ```
 
-## Gradle
+## 3.2 Gradle
 
 ```xml
-implementation 'io.leego:mypages:0.6.0'
+implementation 'io.leego:mypages:1.0.0'
 ```
 
 # 4. Quick Setup
 
-Notice that the PaginationInterceptor requires SqlDialect. It can be any SqlDialect and must be configured.
+Please notice that the PaginationInterceptor requires SqlDialect.
 
-## MyBatis SqlSessionFactoryBean
+## 4.1 MyBatis SqlSessionFactoryBean
 
 ```java
-PaginationSettings settings = PaginationSettings.builder()
-    .sqlDialect(SqlDialect.MYSQL)
-    .build();
+PaginationSettings settings = new PaginationSettings(SqlDialect.MYSQL);
 PaginationInterceptor paginationInterceptor = new PaginationInterceptor(settings);
 Interceptor[] plugins = new Interceptor[]{paginationInterceptor};
 SqlSessionFactoryBean sqlSessionFactoryBean = new SqlSessionFactoryBean();
-        sqlSessionFactoryBean.setDataSource(dataSource);
-        sqlSessionFactoryBean.setPlugins(plugins);
+sqlSessionFactoryBean.setPlugins(plugins);
 ```
 
-## Spring
+## 4.2 Spring
 
 To use MyBatis with Spring you need at least two things defined in the Spring application context: an SqlSessionFactory and at least one mapper interface.
 
 In MyBatis-Spring, an SqlSessionFactoryBean is used to create an SqlSessionFactory. To configure the factory bean, put the following in the Spring configuration file:
 
-### Spring XML
+## 4.3 Spring XML
 
 ```xml
 <bean id="paginationInterceptor" class="io.leego.mypages.interceptor.PaginationInterceptor">
@@ -68,7 +65,7 @@ In MyBatis-Spring, an SqlSessionFactoryBean is used to create an SqlSessionFacto
 </bean>
 ```
 
-### Spring Boot
+## 4.4 Spring Boot
 
 ```java
 @Configuration
@@ -84,15 +81,13 @@ public class MybatisConfiguration {
 
     @Bean
     public PaginationInterceptor paginationInterceptor() {
-        PaginationSettings settings = PaginationSettings.builder()
-            .sqlDialect(SqlDialect.MYSQL)
-            .build();
+        PaginationSettings settings = new PaginationSettings(SqlDialect.MYSQL);
         return new PaginationInterceptor(settings);
     }
 }
 ```
 
-### Spring Boot Starter
+## 4.5 Spring Boot Starter
 
 > * Please see: [mypages-spring-boot-starter](STARTER_USERGUIDE.md)
 
@@ -147,7 +142,7 @@ public class QueryTests {
 
 # 6. Enable Pagination
 
-## Annotations (Recommended)
+## 6.1 Annotations (Recommended)
 
 Using ```@Pagination```, ```@Page```, ```@Size```, ```@Offset```, ```@Rows``` annotations.
 
@@ -168,24 +163,9 @@ public class Pageable {
 
 More annotations: ```@CountExpr```, ```@CountMethodName```, ```@DisableCount```, ```@DisablePagination```.
 
-## PaginationInterceptor Configuration (Recommended)
+## 6.2 PaginationInterceptor Configuration (Recommended)
 
-Define a class with paging parameters, and configure parameters field names.
-
-```java
-public class Pageable {
-    private Integer page;
-    private Integer size;
-    private Integer offset;
-    private Integer rows;
-    private String countExpr;
-    private String countMethodName;
-    private boolean enableCount;
-    /* getter setter */
-}
-```
-
-### Obtains the page and size values from fields
+Configure the interceptor.
 
 ```java
 PaginationSettings settings = PaginationSettings.builder()
@@ -196,22 +176,110 @@ PaginationSettings settings = PaginationSettings.builder()
 PaginationInterceptor interceptor = new PaginationInterceptor(settings);
 ```
 
-### Obtains the offset and rows values from fields
+### 6.2.1 Define classes
+
+Define a class with paging parameters.
 
 ```java
-PaginationSettings settings = PaginationSettings.builder()
-    .sqlDialect(SqlDialect.MYSQL)
-    .offsetField("offset")
-    .rowsField("rows")
-    .build();
-PaginationInterceptor interceptor = new PaginationInterceptor(settings);
+public class Pageable {
+    private Integer page;
+    private Integer size;
+
+    public Pageable(Integer page, Integer size) {
+        this.page = page;
+        this.size = size;
+    }
+    /* getter setter */
+}
+```
+
+Assume there is a mapper interface defined like the following:
+
+```java
+public interface FooMapper {
+    @Select("SELECT * FROM foo")
+    List<Foo> query(Pageable pageable);
+}
+```
+
+Call query method:
+
+```java
+import io.leego.mypages.util.Page;
+
+@Service
+public class QueryTests {
+    @Autowired
+    private FooMapper fooMapper;
+
+    public Page<Foo> query() {
+        return Page.of(fooMapper.query(new Pageable(1, 10)));
+    }
+}
+```
+
+### 6.2.2 MyBatis ```@Param```
+
+Assume there is a mapper interface defined like the following:
+
+```java
+public interface FooMapper {
+    @Select("SELECT * FROM foo")
+    List<Foo> query(@Param("page") Integer page, @Param("size") Integer size);
+}
+```
+
+Call query method:
+
+```java
+import io.leego.mypages.util.Page;
+
+@Service
+public class QueryTests {
+    @Autowired
+    private FooMapper fooMapper;
+
+    public Page<Foo> query() {
+        return Page.of(fooMapper.query(1, 10));
+    }
+}
+```
+
+### 6.2.3 Map
+
+Assume there is a mapper interface defined like the following:
+
+```java
+public interface FooMapper {
+    @Select("SELECT * FROM foo")
+    List<Foo> query(Map map);
+}
+```
+
+Call query method:
+
+```java
+import io.leego.mypages.util.Page;
+
+@Service
+public class QueryTests {
+    @Autowired
+    private FooMapper fooMapper;
+
+    public Page<Foo> query() {
+        Map<String, Object> map = new HashMap<>();
+        map.put("size", 1);
+        map.put("page", 10);
+        return Page.of(fooMapper.query(map));
+    }
+}
 ```
 
 ### More configurations.
 
 ```java
 PaginationSettings settings = PaginationSettings.builder()
-    .sqlDialect(SqlDialect.MYSQL) // Specifies sql dialect.
+    .sqlDialect(SqlDialect.MYSQL) // Specifies sql-dialect.
     .countExpr("*") // The column name or expression, the default value is <code>"*"</code>.
     .pageField("page") // Obtains the page value from parameter.
     .sizeField("size") // Obtains the size value from parameter.
@@ -230,22 +298,18 @@ PaginationSettings settings = PaginationSettings.builder()
 PaginationInterceptor interceptor = new PaginationInterceptor(settings);
 ```
 
-## Extends ```io.leego.mypages.util.Pageable```
+## 6.3 Extends ```io.leego.mypages.util.Pageable```
 
 Define a class extends ```io.leego.mypages.util.Pageable```.
 
 ```java
 public class PageableDTO extends io.leego.mypages.util.Pageable {
-    private String name;
-    /* getter setter */
 }
 ```
 
 # 7. Using custom count methods
 
-## Annotations
-
-Assume there is a class defined like the following:
+## 7.1 Annotations
 
 ```java
 @Pagination
@@ -266,7 +330,7 @@ public class Pageable {
 }
 ```
 
-## PaginationInterceptor Configuration
+## 7.2 PaginationInterceptor Configuration
 
 ```java
 public class Pageable {
@@ -293,7 +357,7 @@ PaginationSettings settings = PaginationSettings.builder()
 PaginationInterceptor interceptor = new PaginationInterceptor(settings);
 ```
 
-## Call query and count methods:
+## 7.3 Call methods:
 
 Assume there is a mapper interface defined like the following:
 
@@ -319,7 +383,7 @@ public class QueryTests {
 
     public Page<Foo> query() {
         // Specifies the count method name.
-         return Page.of(fooMapper.query(new Pageable(1, 10, "count")));
+        return Page.of(fooMapper.query(new Pageable(1, 10, "count")));
     }
 }
 ```
@@ -328,20 +392,20 @@ public class QueryTests {
   
 Rationalize the parameters if the values are invalid, the following parameters can be set:
 
-**defaultPage**: Replaces the page with default-page if the page is null or less than 1.
-**defaultSize**: Replaces the size with default-size if the size is null or less than 1.
-**maxPage**: Replaces the page with max-page if the page is greater than max-page.
-**maxSize**: Replaces the size with max-size if the size is greater than max-size.
+**defaultPage**: Replaces the page with default-page if the page is null or less than 1.  
+**defaultSize**: Replaces the size with default-size if the size is null or less than 1.  
+**maxPage**: Replaces the page with max-page if the page is greater than max-page.  
+**maxSize**: Replaces the size with max-size if the size is greater than max-size.  
 
-These can be set up like the following:
+## 8.1 Annotations
 
-## Annotations
 ```java
-@Pagination(defaultPage = 1, defaultSize = 10, maxPage = 1000, maxSize = 1000)
-public class Pageable {}
+@Pagination(defaultPage = 1, defaultSize = 10, maxPage = 10000, maxSize = 10000)
+public class Pageable {
+}
 ```
 
-## PaginationInterceptor Configuration
+## 8.2 PaginationInterceptor Configuration
 
 ```java
 PaginationSettings settings = PaginationSettings.builder()
@@ -358,32 +422,31 @@ PaginationInterceptor interceptor = new PaginationInterceptor(settings);
 
 If the invocation proceed, it will return an instance of the ```PaginationCollection```.
 
-## Using Wrapper Class ```io.leego.mypages.util.Page``` 
+## 9.1 Using ```io.leego.mypages.util.Page``` 
 
-#### Wrap
+#### 9.1.1 Wrap
 
 ```java
 Page<Foo> result = Page.of(fooMapper.query(pageable));
 ```
 
-#### Convert
+#### 9.1.2 Convert
 
 ```java
 Page<Bar> result = Page.of(fooMapper.query(pageable), foo -> new Bar(foo));
 ```
 
-#### Map
+#### 9.1.3 Mapping
 
 ```java
-Page<Bar> result = Page.of(fooMapper.query(pageable))
-    .map(foo -> new Bar(foo));
+Page<Bar> result = Page.of(fooMapper.query(pageable)).map(foo -> new Bar(foo));
 ```
 
-## Custom Classes & Utils
+## 9.2 Custom
 
 For example:
 
-#### Wrapper Class
+#### 9.2.1 Custom Wrapper Class
 
 ```java
 public class Pagination<T> implements Serializable {
@@ -506,7 +569,7 @@ public class Pagination<T> implements Serializable {
 }
 ```
 
-#### Util
+#### 9.2.2 Custom Utils
 
 ```java
 public final class PageUtils {
@@ -575,14 +638,4 @@ public final class PageUtils {
     }
 
 }
-```
-
-Finally, use the custom wrapper class and util.
-
-```java
-Pagination<Foo> result = PageUtils.of(fooMapper.query(pageable));
-```
-
-```java
-Pagination<Bar> result = PageUtils.of(fooMapper.query(pageable), foo -> new Bar(foo));
 ```
