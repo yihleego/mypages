@@ -11,14 +11,10 @@ Please make sure the Java version is 1.8 and above.
 ## 3.1 Maven
 
 ```xml
-<properties>
-    <mypages.version>1.0.0</mypages.version>
-</properties>
-
 <dependency>
     <groupId>io.leego</groupId>
     <artifactId>mypages</artifactId>
-    <version>${mypages.version}</version>
+    <version>1.0.0</version>
 </dependency>
 ```
 
@@ -144,7 +140,7 @@ public class QueryTests {
 
 ## 6.1 Annotations (Recommended)
 
-Using ```@Pagination```, ```@Page```, ```@Size```, ```@Offset```, ```@Rows``` annotations.
+Using `@Pagination`, `@Page`, `@Size`, `@Offset`, `@Rows` annotations.
 
 ```java
 @Pagination
@@ -161,7 +157,7 @@ public class Pageable {
 }
 ```
 
-More annotations: ```@CountExpr```, ```@CountMethodName```, ```@DisableCount```, ```@DisablePagination```.
+More annotations: `@CountExpr`, `@CountMethodName`, `@DisableCount`, `@DisablePagination`.
 
 ## 6.2 PaginationInterceptor Configuration (Recommended)
 
@@ -218,7 +214,7 @@ public class QueryTests {
 }
 ```
 
-### 6.2.2 MyBatis ```@Param```
+### 6.2.2 MyBatis `@Param`
 
 Assume there is a mapper interface defined like the following:
 
@@ -286,8 +282,8 @@ PaginationSettings settings = PaginationSettings.builder()
     .offsetField("offset") // Obtains the offset value from parameter.
     .rowsField("rows") // Obtains the rows value from parameter.
     .countExprField("countExpr") // Obtains the count expression from parameter.
-    .countMethodNameField("countMethodName") // Obtains the count method name from parameter.
-    .enableCountField("enableCount") // Whether to enable count.
+    .countMethodNameField("countMethodName") // Obtains the count-method-name from parameter.
+    .enableCountField("enableCount") // Obtains the enable-count from parameter.
     .skipQueryIfCountEqualsZero(true) // Whether to skip query if total quantity equals zero.
     .useGeneratedIfCountMethodIsMissing(true) // Whether to use generated if the specified count method is missing.
     .defaultPage(1) // Replaces the page with default-page if the page is null or less than 1.
@@ -298,9 +294,9 @@ PaginationSettings settings = PaginationSettings.builder()
 PaginationInterceptor interceptor = new PaginationInterceptor(settings);
 ```
 
-## 6.3 Extends ```io.leego.mypages.util.Pageable```
+## 6.3 Extends `io.leego.mypages.util.Pageable`
 
-Define a class extends ```io.leego.mypages.util.Pageable```.
+Define a class extends `io.leego.mypages.util.Pageable`.
 
 ```java
 public class PageableDTO extends io.leego.mypages.util.Pageable {
@@ -420,9 +416,9 @@ PaginationInterceptor interceptor = new PaginationInterceptor(settings);
 
 # 9. Query Results
 
-If the invocation proceed, it will return an instance of the ```PaginationCollection```.
+If the invocation proceed, it will return an instance of the `PaginationCollection`.
 
-## 9.1 Using ```io.leego.mypages.util.Page``` 
+## 9.1 Using `io.leego.mypages.util.Page` 
 
 #### 9.1.1 Wrap
 

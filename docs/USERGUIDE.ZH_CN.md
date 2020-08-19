@@ -11,14 +11,10 @@ MyPages是Java实现基于[MyBatis](https://github.com/mybatis/mybatis-3)的开�
 ## 3.1 Maven
 
 ```xml
-<properties>
-    <mypages.version>1.0.0</mypages.version>
-</properties>
-
 <dependency>
     <groupId>io.leego</groupId>
     <artifactId>mypages</artifactId>
-    <version>${mypages.version}</version>
+    <version>1.0.0</version>
 </dependency>
 ```
 
@@ -144,7 +140,7 @@ public class QueryTests {
 
 ## 6.1 注解 (推荐)
 
-使用 ```@Pagination```, ```@Page```, ```@Size```, ```@Offset```, ```@Rows``` 注解.
+使用 `@Pagination`、`@Page`、`@Size`、`@Offset`、`@Rows` 注解.
 
 ```java
 @Pagination
@@ -161,7 +157,7 @@ public class Pageable {
 }
 ```
 
-更多注解: ```@CountExpr```, ```@CountMethodName```, ```@DisableCount```, ```@DisablePagination```.
+更多注解: `@CountExpr`、`@CountMethodName`、`@DisableCount`、`@DisablePagination`.
 
 ## 6.2 PaginationInterceptor配置 (推荐)
 
@@ -218,7 +214,7 @@ public class QueryTests {
 }
 ```
 
-### 6.2.2 MyBatis ```@Param```
+### 6.2.2 MyBatis `@Param`
 
 假设存在如下定义的Mapper：
 
@@ -287,9 +283,9 @@ PaginationSettings settings = PaginationSettings.builder()
     .rowsField("rows") // 从参数字段中获取rows值。
     .countExprField("countExpr") // 从参数字段中获取count表达式。
     .countMethodNameField("countMethodName") // 从参数字段中获取自定义count方法名称。
-    .enableCountField("enableCount") // 是否启用count。
-    .skipQueryIfCountEqualsZero(true) // 是否跳过count如果总数量为0。
-    .useGeneratedIfCountMethodIsMissing(true) // 是否生成的查询方法如果指定查询方法不存在。
+    .enableCountField("enableCount") // 从参数字段中判断是否启用count。
+    .skipQueryIfCountEqualsZero(true) // 是否跳过查询如果总数量为0。
+    .useGeneratedIfCountMethodIsMissing(true) // 是否使用自动生成的count方法如果指定count方法不存在。
     .defaultPage(1) // 如果page为空或小于1，则用default-page替换page。
     .defaultSize(10) // 如果size为空或小于1，则用default-size替换size。
     .maxPage(10000) // 如果page大于max-page，则用max-page替换page。
@@ -298,9 +294,9 @@ PaginationSettings settings = PaginationSettings.builder()
 PaginationInterceptor interceptor = new PaginationInterceptor(settings);
 ```
 
-## 6.3 继承 ```io.leego.mypages.util.Pageable```
+## 6.3 继承 `io.leego.mypages.util.Pageable`
 
-定义一个继承 ```io.leego.mypages.util.Pageable```的类.
+定义一个继承 `io.leego.mypages.util.Pageable`的类.
 
 ```java
 public class PageableDTO extends io.leego.mypages.util.Pageable {
@@ -420,9 +416,9 @@ PaginationInterceptor interceptor = new PaginationInterceptor(settings);
 
 # 9. 查询结果
 
-如果调用执行成功结束，它将返回一个```PaginationCollection```实例。
+如果调用执行成功结束，它将返回一个`PaginationCollection`实例。
 
-## 9.1 使用 ```io.leego.mypages.util.Page``` 
+## 9.1 使用 `io.leego.mypages.util.Page` 
 
 #### 9.1.1 包装
 

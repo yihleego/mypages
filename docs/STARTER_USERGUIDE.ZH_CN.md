@@ -11,14 +11,10 @@ MyPages是Java实现基于[MyBatis](https://github.com/mybatis/mybatis-3)的开�
 ## 3.1 Maven
 
 ```xml
-<properties>
-    <mypages-spring-boot-starter.version>1.0.0</mypages-spring-boot-starter.version>
-</properties>
-
 <dependency>
     <groupId>io.leego</groupId>
     <artifactId>mypages-spring-boot-starter</artifactId>
-    <version>${mypages-spring-boot-starter.version}</version>
+    <version>1.0.0</version>
 </dependency>
 ```
 
@@ -29,6 +25,27 @@ implementation 'io.leego:mypages-spring-boot-starter:1.0.0'
 ```
 
 # 4. 配置
+
+|Property|Description|
+|:-|:-|
+|spring.mypages.enabled|是否启用mypages。|
+|spring.mypages.sql-dialect|指定sql dialect，如：`MySQL`、`PostgreSQL`、`Oracle`等。|
+|spring.mypages.count-expr|设置count字段名称，默认值为`*`。|
+|spring.mypages.page-field|从参数字段中获取`page`值。|
+|spring.mypages.size-field|从参数字段中获取`size`值。|
+|spring.mypages.offset-field|从参数字段中获取`offset`值。|
+|spring.mypages.rows-field|从参数字段中获取`rows`值。|
+|spring.mypages.count-expr-field|从参数字段中获取count表达式。|
+|spring.mypages.count-method-name-field|从参数字段中获取自定义count方法名称。|
+|spring.mypages.enable-count-field|从参数字段中判断是否启用count。|
+|spring.mypages.skip-query-if-count-equals-zero|是否跳过查询如果结果数量为`0`。|
+|spring.mypages.use-generated-if-count-method-is-missing|是否使用自动生成的count方法如果指定count方法不存在。|
+|spring.mypages.default-page|如果`page`为空或小于`1`，则用`default-page`替换`page`。|
+|spring.mypages.default-size|如果`size`为空或小于`1`，则用`default-size`替换`size`。|
+|spring.mypages.max-page|如果`page`大于`max-page`，则用`max-page`替换`page`。|
+|spring.mypages.max-size|如果`size`大于`max-size`，则用`max-size`替换`size`。|
+
+## 示例
 
 使用分页参数定义一个类，并配置参数字段名。
 
@@ -45,9 +62,9 @@ public class Pageable {
 }
 ```
 
-请注意sql-dialect必须被配置。
+**请注意sql-dialect必须被配置。**
 
-## 4.1 Properties
+Properties
 
 ```properties
 spring.mypages.enabled=true
@@ -68,7 +85,7 @@ spring.mypages.max-page=10000
 spring.mypages.max-size=10000
 ```
 
-## 4.2 Yaml
+Yaml
 
 ```yaml
 spring:

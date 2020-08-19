@@ -1,11 +1,11 @@
 # MyPages
 
-[Chinese Document 中文版](README.ZH_CN.md)
-
 MyPages is a java based, open source pagination plugin for [MyBatis](https://github.com/mybatis/mybatis-3) that simplifies database paging queries.
 Many databases, one plugin.
 
 ## Installation
+
+Please make sure the Java version is 1.8 and above.
 
 ```bash
 $ git clone https://github.com/yihleego/mypages.git
@@ -18,14 +18,10 @@ $ mvn clean install
 ### Maven
 
 ```xml
-<properties>
-    <mypages.version>1.0.0</mypages.version>
-</properties>
-
 <dependency>
     <groupId>io.leego</groupId>
     <artifactId>mypages</artifactId>
-    <version>${mypages.version}</version>
+    <version>1.0.0</version>
 </dependency>
 ```
 
@@ -47,10 +43,12 @@ implementation 'io.leego:mypages:1.0.0'
 
 ## Documentation
 
+[Chinese Document 中文版](README.ZH_CN.md)
+
 > * [User Guide (English)](docs/USERGUIDE.md)
 > * [用户指南 (中文版)](docs/USERGUIDE.ZH_CN.md)
-> * [MyPages-Spring-Boot-Starter (English)](docs/STARTER_USERGUIDE.md)
-> * [MyPages-Spring-Boot-Starter (中文版)](docs/STARTER_USERGUIDE.ZH_CN.md)
+> * [mypages-spring-boot-starter (English)](docs/STARTER_USERGUIDE.md)
+> * [mypages-spring-boot-starter (中文版)](docs/STARTER_USERGUIDE.ZH_CN.md)
 
 ## Contact
 

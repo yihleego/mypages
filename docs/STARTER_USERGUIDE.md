@@ -11,14 +11,10 @@ Please make sure the Java version is 1.8 and above.
 ## 3.1 Maven
 
 ```xml
-<properties>
-    <mypages-spring-boot-starter.version>1.0.0</mypages-spring-boot-starter.version>
-</properties>
-
 <dependency>
     <groupId>io.leego</groupId>
     <artifactId>mypages-spring-boot-starter</artifactId>
-    <version>${mypages-spring-boot-starter.version}</version>
+    <version>1.0.0</version>
 </dependency>
 ```
 
@@ -29,6 +25,27 @@ implementation 'io.leego:mypages-spring-boot-starter:1.0.0'
 ```
 
 # 4. Configuration
+
+|Property|Description|
+|:-|:-|
+|spring.mypages.enabled|Whether to enable mypages.|
+|spring.mypages.sql-dialect|The sql dialect such as `MySQL`, `PostgreSQL`, `Oracle`, etc.|
+|spring.mypages.count-expr|The column name or expression, the default value is `*`.|
+|spring.mypages.page-field|The `page` field name of the parameter.|
+|spring.mypages.size-field|The `size` field name of the parameter.|
+|spring.mypages.offset-field|The `offset` field name of the parameter.|
+|spring.mypages.rows-field|The `rows` field name of the parameter.|
+|spring.mypages.count-expr-field|The count expression field name of the parameter.|
+|spring.mypages.count-method-name-field|The `count-method-name` field name of the parameter.|
+|spring.mypages.enable-count-field|The `enable-count` field name of the parameter.|
+|spring.mypages.skip-query-if-count-equals-zero|Whether to skip query if total value equals zero.|
+|spring.mypages.use-generated-if-count-method-is-missing|Whether to use generated if the specified count method is missing.|
+|spring.mypages.default-page|Replaces the `page` with `default-page` if the `page` is `null` or less than `1`.|
+|spring.mypages.default-size|Replaces the `size` with `default-size` if the `size` is `null` or less than `1`.|
+|spring.mypages.max-page|Replaces the `page` with `max-page` if the `page` is greater than `max-page`.|
+|spring.mypages.max-size|Replaces the `size` with `max-size` if the `size` is greater than `max-size`.|
+
+## For example
 
 Define a class with paging parameters.
 
@@ -45,9 +62,9 @@ public class Pageable {
 }
 ```
 
-Please notice that the sql-dialect is required.
+**Please notice that the sql-dialect is required.**
 
-## 4.1 Properties
+Properties
 
 ```properties
 spring.mypages.enabled=true
@@ -68,7 +85,7 @@ spring.mypages.max-page=10000
 spring.mypages.max-size=10000
 ```
 
-## 4.2 Yaml
+Yaml
 
 ```yaml
 spring:
