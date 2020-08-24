@@ -61,17 +61,9 @@ public class PaginationInterceptor implements Interceptor {
     private final ConcurrentMap<String, PaginationUnrefinedParam> unrefinedParamMap = new ConcurrentHashMap<>(64);
 
     public PaginationInterceptor(PaginationSettings settings) {
-        if (settings == null || (settings.getDialect() == null && settings.getSqlDialect() == null)) {
-            throw new IllegalArgumentException("Dialect is not configured.");
-        }
-        // Whether to obtain values from parameter.
-        settings.setObtainValuesFromFields(
-                (settings.getPageFieldName() != null && settings.getSizeFieldName() != null)
-                        || (settings.getOffsetFieldName() != null && settings.getRowsFieldName() != null));
+        settings.initialize();
         this.settings = settings;
-        this.dialect = settings.getDialect() != null
-                ? settings.getDialect()
-                : settings.getSqlDialect().newDialect();
+        this.dialect = settings.getDialect();
     }
 
     @Override

@@ -209,6 +209,17 @@ public final class PaginationSettings {
         this.maxSize = maxSize;
     }
 
+    public void initialize() {
+        if (this.dialect == null && this.sqlDialect == null) {
+            throw new NullPointerException("Dialect is not configured.");
+        }
+        this.obtainValuesFromFields = (this.pageFieldName != null && this.sizeFieldName != null)
+                || (this.offsetFieldName != null && this.rowsFieldName != null);
+        if (this.dialect == null) {
+            this.dialect = this.sqlDialect.newDialect();
+        }
+    }
+
     public static Builder builder() {
         return new Builder();
     }
