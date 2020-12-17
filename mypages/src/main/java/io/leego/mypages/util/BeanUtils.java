@@ -9,6 +9,7 @@ import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.function.Function;
 import java.util.function.Supplier;
 
 /**
@@ -23,152 +24,167 @@ public final class BeanUtils {
     }
 
     /**
-     * Returns read method name.
+     * Returns read-method name.
      * <p>Example: <pre>
-     * String s = getReadMethodName("name"); // getName
+     * <code>String methodName = getReadMethodName("name"); // The method name is "getName".</code>
      * </pre>
-     * @param fieldName The name of the property
-     * @return read method name
+     * @param fieldName The name of the property.
+     * @return read-method name.
      */
     public static String getReadMethodName(String fieldName) {
-        return GET_PREFIX + upperCaseFirst(fieldName);
+        return buildMethodName(GET_PREFIX, fieldName);
     }
 
     /**
-     * Returns read method name.
+     * Returns read-method name.
      * <p>Example 1:<pre>
-     * String s = getReadMethodName("name", false); // getName
+     * <code>String methodName = getReadMethodName("name", false); // The method name is "getName".</code>
      * </pre>
      * <p>Example 2:<pre>
-     * String s = getReadMethodName("success", true); // isSuccess
+     * <code>String methodName = getReadMethodName("success", true); // The method name is "isSuccess".</code>
      * </pre>
-     * @param fieldName        The name of the property
-     * @param primitiveBoolean Whether the field type is primitive boolean
-     * @return read method name
+     * @param fieldName        The name of the property.
+     * @param primitiveBoolean Whether the field type is primitive boolean.
+     * @return read-method name.
      */
     public static String getReadMethodName(String fieldName, boolean primitiveBoolean) {
-        return (primitiveBoolean ? IS_PREFIX : GET_PREFIX) + upperCaseFirst(fieldName);
+        return buildMethodName((primitiveBoolean ? IS_PREFIX : GET_PREFIX), fieldName);
     }
 
     /**
-     * Returns read method name.
+     * Returns read-method name.
+     * <p>Example: <pre>
+     * <code>String methodName = getPrimitiveBooleanReadMethodName("success"); // The method name is "isSuccess".</code>
+     * </pre>
+     * @param fieldName The name of the property.
+     * @return read-method name.
+     */
+    public static String getPrimitiveBooleanReadMethodName(String fieldName) {
+        return buildMethodName(IS_PREFIX, fieldName);
+    }
+
+    /**
+     * Returns read-method name.
      * <p>Example 1:<pre>
-     * Field field = Foo.class.getField("name"); // field.getType() != boolean.class
-     * String s = getReadMethodName(field); // getName
+     * <code>Field field = Foo.class.getDeclaredField("name"); // Assume that the field type is not boolean.</code>
+     * <code>String methodName = getReadMethodName(field); // The method name is "getName".</code>
      * </pre>
      * <p>Example 2:<pre>
-     * Field field = Foo.class.getField("success"); // field.getType() == boolean.class
-     * String s = getReadMethodName(field); // isSuccess
+     * <code>Field field = Foo.class.getDeclaredField("success"); // Assume that the field type is boolean.</code>
+     * <code>String methodName = getReadMethodName(field); // The method name is "isSuccess".</code>
      * </pre>
      * @param field {@link Field}
-     * @return read method name
+     * @return read-method name.
      */
     public static String getReadMethodName(Field field) {
         return getReadMethodName(field.getName(), field.getType() == boolean.class);
     }
 
     /**
-     * Returns read method name.
+     * Returns read-method name.
      * <p>Example 1:<pre>
-     * Field field = Foo.class.getField("name");
-     * String s = getReadMethodName(field, false); // getName
+     * <code>Field field = Foo.class.getDeclaredField("name"); // Assume that the field type is not boolean./code>
+     * <code>String methodName = getReadMethodName(field, false); // The method name is "getName".</code>
      * </pre>
      * <p>Example 2:<pre>
-     * Field field = Foo.class.getField("success");
-     * String s = getReadMethodName(field, true); // isSuccess
+     * <code>Field field = Foo.class.getDeclaredField("success"); // Assume that the field type is boolean.</code>
+     * <code>String methodName = getReadMethodName(field, true); // The method name is "isSuccess".</code>
      * </pre>
      * @param field            {@link Field}
-     * @param primitiveBoolean Whether the field type is primitive boolean
-     * @return read method name
+     * @param primitiveBoolean Whether the field type is primitive boolean.
+     * @return read-method name.
      */
     public static String getReadMethodName(Field field, boolean primitiveBoolean) {
         return getReadMethodName(field.getName(), primitiveBoolean);
     }
 
     /**
-     * Returns write method name.
+     * Returns write-method name.
      * <p>Example: <pre>
-     * String s = getWriteMethodName("name"); // setName
+     * <code>String methodName = getWriteMethodName("name"); // The method name is "setName".</code>
      * </pre>
-     * @param fieldName The name of the property
-     * @return write method name
+     * @param fieldName The name of the property.
+     * @return write-method name.
      */
     public static String getWriteMethodName(String fieldName) {
-        return SET_PREFIX + upperCaseFirst(fieldName);
+        return buildMethodName(SET_PREFIX, fieldName);
     }
 
     /**
-     * Returns write method name.
+     * Returns write-method name.
      * <p>Example: <pre>
-     * Field field = Foo.class.getField("name");
-     * String s = getWriteMethodName(field); // setName
+     * <code>Field field = Foo.class.getDeclaredField("name");</code>
+     * <code>String methodName = getWriteMethodName(field); // The method name is "setName".</code>
      * </pre>
      * @param field {@link Field}
-     * @return write method name
+     * @return write-method name.
      */
     public static String getWriteMethodName(Field field) {
-        return SET_PREFIX + upperCaseFirst(field.getName());
+        return buildMethodName(SET_PREFIX, field.getName());
     }
 
-
     /**
-     * Returns read method.
+     * Returns read-method.
      * <p>Example: <pre>
-     * Method m = getReadMethod(Foo.class, "name");
+     * <code>Method method = getReadMethod(Foo.class, "name");</code>
      * </pre>
-     * @param type      The Class object for the target bean
-     * @param fieldName The name of the property
-     * @return read method
+     * @param type      The Class object for the target bean.
+     * @param fieldName The name of the property.
+     * @return read-method
+     * @throws IntrospectionException if an exception occurs during introspection.
      */
     public static Method getReadMethod(Class<?> type, String fieldName) throws IntrospectionException {
         return getPropertyDescriptor(fieldName, type).getReadMethod();
     }
 
     /**
-     * Returns read method.
+     * Returns read-method.
      * <p>Example: <pre>
-     * Field field = Foo.class.getField("name");
-     * Method m = getReadMethod(field);
+     * Field field = Foo.class.getDeclaredField("name");
+     * Method method = getReadMethod(field);
      * </pre>
      * @param field {@link Field}
-     * @return read method
+     * @return read-method
+     * @throws IntrospectionException if an exception occurs during introspection.
      */
     public static Method getReadMethod(Field field) throws IntrospectionException {
         return getReadMethod(field.getDeclaringClass(), field.getName());
     }
 
     /**
-     * Returns write method.
+     * Returns write-method.
      * <p>Example: <pre>
-     * String s = getWriteMethod(Foo.class, "name");
+     * <code>String methodName = getWriteMethod(Foo.class, "name");</code>
      * </pre>
      * @param type      The Class object for the target bean
      * @param fieldName The name of the property
-     * @return write method
+     * @return write-method
+     * @throws IntrospectionException if an exception occurs during introspection.
      */
     public static Method getWriteMethod(Class<?> type, String fieldName) throws IntrospectionException {
         return getPropertyDescriptor(fieldName, type).getWriteMethod();
     }
 
     /**
-     * Returns write method.
+     * Returns write-method.
      * <p>Example: <pre>
-     * Field field = Foo.class.getField("name");
-     * Method m = getWriteMethod(field);
+     * <code>Field field = Foo.class.getDeclaredField("name");</code>
+     * <code>Method method = getWriteMethod(field);</code>
      * </pre>
      * @param field {@link Field}
-     * @return read method
+     * @return read-method
+     * @throws IntrospectionException if an exception occurs during introspection.
      */
     public static Method getWriteMethod(Field field) throws IntrospectionException {
         return getWriteMethod(field.getDeclaringClass(), field.getName());
     }
-
 
     /**
      * Returns value of the field of the object.
      * @param o         Target bean
      * @param fieldName The name of the property
      * @return value
+     * @throws IntrospectionException    if an exception occurs during introspection.
      * @throws NoSuchMethodException     if method is not found.
      * @throws IllegalAccessException    if the method is not accessible.
      * @throws InvocationTargetException if the underlying method throws an exception.
@@ -189,6 +205,7 @@ public final class BeanUtils {
      * @param o     Target bean
      * @param field {@link Field}
      * @return value
+     * @throws IntrospectionException    if an exception occurs during introspection.
      * @throws NoSuchMethodException     if method is not found.
      * @throws IllegalAccessException    if the method is not accessible.
      * @throws InvocationTargetException if the underlying method throws an exception.
@@ -225,6 +242,7 @@ public final class BeanUtils {
      * @param fieldName  The name of the property
      * @param returnType The return type
      * @return value
+     * @throws IntrospectionException    if an exception occurs during introspection.
      * @throws NoSuchMethodException     if method is not found.
      * @throws IllegalAccessException    if the method is not accessible.
      * @throws InvocationTargetException if the underlying method throws an exception.
@@ -243,6 +261,7 @@ public final class BeanUtils {
      * @param field      {@link Field}
      * @param returnType The return type
      * @return value
+     * @throws IntrospectionException    if an exception occurs during introspection.
      * @throws NoSuchMethodException     if method is not found.
      * @throws IllegalAccessException    if the method is not accessible.
      * @throws InvocationTargetException if the underlying method throws an exception.
@@ -280,7 +299,7 @@ public final class BeanUtils {
      * @throws IllegalAccessException    if the method is not accessible.
      * @throws InvocationTargetException if the underlying method throws an exception.
      */
-    public static Map<Object, Object> readAll(Object o) throws IntrospectionException, IllegalAccessException, InvocationTargetException {
+    public static Map<String, Object> readAll(Object o) throws IntrospectionException, IllegalAccessException, InvocationTargetException {
         return readAll(o, HashMap::new);
     }
 
@@ -293,9 +312,9 @@ public final class BeanUtils {
      * @throws IllegalAccessException    if the method is not accessible.
      * @throws InvocationTargetException if the underlying method throws an exception.
      */
-    public static Map<Object, Object> readAll(Object o, Supplier<Map<Object, Object>> mapFactory) throws IllegalAccessException, InvocationTargetException, IntrospectionException {
+    public static Map<String, Object> readAll(Object o, Supplier<Map<String, Object>> mapFactory) throws IllegalAccessException, InvocationTargetException, IntrospectionException {
         PropertyDescriptor[] descriptors = getPropertyDescriptors(o.getClass());
-        Map<Object, Object> map = mapFactory.get();
+        Map<String, Object> map = mapFactory.get();
         for (PropertyDescriptor descriptor : descriptors) {
             map.put(descriptor.getName(), read(o, descriptor.getReadMethod()));
         }
@@ -303,11 +322,57 @@ public final class BeanUtils {
     }
 
     /**
-     * Invokes the underlying method represented by field name
+     * Returns values of all fields of the object.
+     * @param o           Target bean
+     * @param mapFactory  The map factory
+     * @param keyMapper   The mapping function to produce keys
+     * @param valueMapper The mapping function to produce values
+     * @return values
+     * @throws IntrospectionException    if an exception occurs during introspection.
+     * @throws IllegalAccessException    if the method is not accessible.
+     * @throws InvocationTargetException if the underlying method throws an exception.
+     */
+    public static <K, V> Map<K, V> readAll(Object o, Supplier<Map<K, V>> mapFactory, Function<String, K> keyMapper, Function<Object, V> valueMapper) throws IllegalAccessException, InvocationTargetException, IntrospectionException {
+        PropertyDescriptor[] descriptors = getPropertyDescriptors(o.getClass());
+        Map<K, V> map = mapFactory.get();
+        for (PropertyDescriptor descriptor : descriptors) {
+            String key = descriptor.getName();
+            Object value = read(o, descriptor.getReadMethod());
+            if (key != null && value != null) {
+                map.put(keyMapper.apply(key), valueMapper.apply(value));
+            }
+        }
+        return map;
+    }
+
+    /**
+     * Returns an object of the specified type by a map。
+     * @param map         The map
+     * @param beanFactory The bean factory
+     * @return object
+     */
+    public static <T> T fromMap(Map<?, ?> map, Supplier<T> beanFactory) {
+        T bean = beanFactory.get();
+        for (Map.Entry<?, ?> entry : map.entrySet()) {
+            if (entry.getKey() == null || entry.getValue() == null) {
+                continue;
+            }
+            try {
+                write(bean, String.valueOf(entry.getKey()), entry.getValue());
+            } catch (Exception ignored) {
+                // ignored
+            }
+        }
+        return bean;
+    }
+
+    /**
+     * Invokes the underlying method represented by field name.
      * @param o         Target bean
      * @param fieldName The name of the property
      * @param arg       The argument used for the method call
      * @return result
+     * @throws IntrospectionException    if an exception occurs during introspection.
      * @throws NoSuchMethodException     if method is not found.
      * @throws IllegalAccessException    if the method is not accessible.
      * @throws InvocationTargetException if the underlying method throws an exception.
@@ -324,11 +389,12 @@ public final class BeanUtils {
     }
 
     /**
-     * Invokes the underlying method represented by field
+     * Invokes the underlying method represented by field.
      * @param o     Target bean
      * @param field {@link Field}
      * @param arg   The argument used for the method call
      * @return result
+     * @throws IntrospectionException    if an exception occurs during introspection.
      * @throws NoSuchMethodException     if method is not found.
      * @throws IllegalAccessException    if the method is not accessible.
      * @throws InvocationTargetException if the underlying method throws an exception.
@@ -359,7 +425,6 @@ public final class BeanUtils {
         }
         return method.invoke(o, arg);
     }
-
 
     /**
      * Returns a {@link PropertyDescriptor} for a property that follows
@@ -407,15 +472,17 @@ public final class BeanUtils {
         return Introspector.getBeanInfo(beanClass).getPropertyDescriptors();
     }
 
-
     /**
      * Returns a {@link String} which capitalizes the first letter of the string.
      */
-    private static String upperCaseFirst(String s) {
-        if (s != null && s.length() > 0) {
-            return s.substring(0, 1).toUpperCase() + s.substring(1);
+    private static String buildMethodName(String prefix, String s) {
+        if (s == null || s.length() == 0) {
+            return null;
         }
-        return s;
+        if (Character.isUpperCase(s.charAt(0)) || s.length() > 1 && Character.isUpperCase(s.charAt(1))) {
+            return prefix + s;
+        }
+        return prefix + s.substring(0, 1).toUpperCase() + s.substring(1);
     }
 
 }

@@ -62,7 +62,7 @@ public abstract class AbstractDialect implements Dialect {
             paramMap = new HashMap<>((Map<?, ?>) parameter);
         } else {
             boolean hasTypeHandler = ms.getConfiguration().getTypeHandlerRegistry().hasTypeHandler(parameter.getClass());
-            paramMap = hasTypeHandler ? new HashMap<>() : BeanUtils.readAll(parameter);
+            paramMap = hasTypeHandler ? new HashMap<>() : BeanUtils.readAll(parameter, HashMap::new, k -> k, v -> v);
         }
         List<ParameterMapping> parameterMappings;
         if (boundSql.getParameterMappings() == null) {

@@ -21,14 +21,14 @@ $ mvn clean install
 <dependency>
     <groupId>io.leego</groupId>
     <artifactId>mypages</artifactId>
-    <version>1.0.0</version>
+    <version>1.0.1</version>
 </dependency>
 ```
 
 ### Gradle
 
 ```xml
-implementation 'io.leego:mypages:1.0.0'
+implementation 'io.leego:mypages:1.0.1'
 ```
 
 ## Supported
