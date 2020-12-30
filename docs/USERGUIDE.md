@@ -14,14 +14,14 @@ Please make sure the Java version is 1.8 and above.
 <dependency>
     <groupId>io.leego</groupId>
     <artifactId>mypages</artifactId>
-    <version>1.0.1</version>
+    <version>1.1.0</version>
 </dependency>
 ```
 
 ## 3.2 Gradle
 
 ```xml
-implementation 'io.leego:mypages:1.0.1'
+implementation 'io.leego:mypages:1.1.0'
 ```
 
 # 4. Quick Setup

@@ -14,14 +14,14 @@ Please make sure the Java version is 1.8 and above.
 <dependency>
     <groupId>io.leego</groupId>
     <artifactId>mypages-spring-boot-starter</artifactId>
-    <version>1.0.1</version>
+    <version>1.1.0</version>
 </dependency>
 ```
 
 ## 3.2 Gradle
 
 ```xml
-implementation 'io.leego:mypages-spring-boot-starter:1.0.1'
+implementation 'io.leego:mypages-spring-boot-starter:1.1.0'
 ```
 
 # 4. Configuration
