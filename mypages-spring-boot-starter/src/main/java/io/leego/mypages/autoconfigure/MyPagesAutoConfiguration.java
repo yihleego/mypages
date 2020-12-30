@@ -6,6 +6,7 @@ import io.leego.mypages.interceptor.PaginationSettings;
 import org.apache.ibatis.plugin.Interceptor;
 import org.apache.ibatis.session.SqlSessionFactory;
 import org.mybatis.spring.boot.autoconfigure.MybatisAutoConfiguration;
+import org.springframework.beans.factory.InitializingBean;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.AutoConfigureAfter;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
@@ -25,11 +26,11 @@ import java.util.List;
 @ConditionalOnProperty(value = "spring.mypages.enabled", matchIfMissing = true)
 @EnableConfigurationProperties(MyPagesProperties.class)
 @AutoConfigureAfter(MybatisAutoConfiguration.class)
-public class MyPagesConfiguration {
+public class MyPagesAutoConfiguration {
 
     @Bean
     @ConditionalOnMissingBean(PaginationInterceptor.class)
-    public PaginationInterceptor paginationInterceptor(MyPagesProperties properties, @Autowired(required = false) Dialect dialect, @Autowired(required = false) List<SqlSessionFactory> sqlSessionFactories) {
+    public PaginationInterceptor paginationInterceptor(MyPagesProperties properties, @Autowired(required = false) Dialect dialect) {
         if (properties.getSqlDialect() == null && dialect == null) {
             throw new IllegalArgumentException("SqlDialect is required.");
         }
@@ -51,25 +52,38 @@ public class MyPagesConfiguration {
                 .maxPage(properties.getMaxPage())
                 .maxSize(properties.getMaxSize())
                 .build();
-        PaginationInterceptor interceptor = new PaginationInterceptor(settings);
-        if (sqlSessionFactories != null) {
+        return new PaginationInterceptor(settings);
+    }
+
+    @Configuration
+    @ConditionalOnBean({SqlSessionFactory.class})
+    public static class PaginationInterceptorConfiguration implements InitializingBean {
+        @Autowired(required = false)
+        private List<SqlSessionFactory> sqlSessionFactories;
+        @Autowired(required = false)
+        private PaginationInterceptor paginationInterceptor;
+
+        @Override
+        public void afterPropertiesSet() {
+            if (sqlSessionFactories == null || paginationInterceptor == null) {
+                return;
+            }
             for (SqlSessionFactory sqlSessionFactory : sqlSessionFactories) {
                 List<Interceptor> interceptors = sqlSessionFactory.getConfiguration().getInterceptors();
                 if (isAbsent(interceptors)) {
-                    sqlSessionFactory.getConfiguration().addInterceptor(interceptor);
+                    sqlSessionFactory.getConfiguration().addInterceptor(paginationInterceptor);
                 }
             }
         }
-        return interceptor;
-    }
 
-    private boolean isAbsent(List<Interceptor> interceptors) {
-        for (Interceptor interceptor : interceptors) {
-            if (interceptor instanceof PaginationInterceptor) {
-                return false;
+        private boolean isAbsent(List<Interceptor> interceptors) {
+            for (Interceptor interceptor : interceptors) {
+                if (interceptor instanceof PaginationInterceptor) {
+                    return false;
+                }
             }
+            return true;
         }
-        return true;
     }
 
 }

@@ -12,30 +12,34 @@ import java.util.stream.Collectors;
  * @author Yihleego
  */
 public class Page<T> implements Serializable {
-    private static final long serialVersionUID = -5524075755628202327L;
-    /** Data list */
+    private static final long serialVersionUID = 3214571808482585491L;
+    /** Data list. */
     protected List<T> list;
-    /** One-based page index */
+    /** One-based page index. */
     protected Integer page;
-    /** The size of the page to be returned */
+    /** The size of the page to be returned. */
     protected Integer size;
-    /** Total quantity */
+    /** The quantity of data. */
     protected Long total;
-    /** Total pages */
-    protected Long totalPages;
-    /** Next page */
+    /** The quantity of data pages. */
+    protected Long pages;
+    /** Returns <code>true</code> if there is a next page. */
     protected Boolean next;
-    /** Previous page */
+    /** Returns <code>true</code> if there is a previous page. */
     protected Boolean previous;
+    /** Extra data. */
+    protected Object extra;
 
-    public Page(List<T> list, Integer page, Integer size, Long total, Long totalPages, Boolean next, Boolean previous) {
+    public Page() {
+    }
+
+    public Page(List<T> list) {
         this.list = list;
-        this.page = page;
-        this.size = size;
+    }
+
+    public Page(List<T> list, Long total) {
+        this.list = list;
         this.total = total;
-        this.totalPages = totalPages;
-        this.next = next;
-        this.previous = previous;
     }
 
     public Page(List<T> list, Integer page, Integer size) {
@@ -44,18 +48,33 @@ public class Page<T> implements Serializable {
         this.size = size;
     }
 
-    public Page(List<T> list, Long total) {
+    public Page(List<T> list, Integer page, Integer size, Long total, Long pages, Boolean next, Boolean previous) {
         this.list = list;
+        this.page = page;
+        this.size = size;
         this.total = total;
+        this.pages = pages;
+        this.next = next;
+        this.previous = previous;
     }
 
-    public Page(List<T> list) {
+    public Page(List<T> list, Integer page, Integer size, Long total, Long pages, Boolean next, Boolean previous, Object extra) {
         this.list = list;
+        this.page = page;
+        this.size = size;
+        this.total = total;
+        this.pages = pages;
+        this.next = next;
+        this.previous = previous;
+        this.extra = extra;
     }
 
+    public static <T> Page<T> of(List<T> list, Integer page, Integer size, Long total, Long pages, Boolean next, Boolean previous, Object extra) {
+        return new Page<>(list, page, size, total, pages, next, previous, extra);
+    }
 
-    public static <T> Page<T> of(List<T> list, Integer page, Integer size, Long total, Long totalPages, Boolean next, Boolean previous) {
-        return new Page<>(list, page, size, total, totalPages, next, previous);
+    public static <T> Page<T> of(List<T> list, Integer page, Integer size, Long total, Long pages, Boolean next, Boolean previous) {
+        return new Page<>(list, page, size, total, pages, next, previous);
     }
 
     public static <T> Page<T> of(List<T> list, Integer page, Integer size, Long total) {
@@ -67,17 +86,17 @@ public class Page<T> implements Serializable {
         }
         boolean next;
         boolean previous;
-        long totalPages;
+        long pages;
         if (page > 0 && size > 0) {
             next = page.longValue() * size < total;
             previous = page != 1;
-            totalPages = total % size > 0 ? total / size + 1 : total / size;
+            pages = total % size > 0 ? total / size + 1 : total / size;
         } else {
             next = false;
             previous = false;
-            totalPages = 0L;
+            pages = 0L;
         }
-        return new Page<>(list, page, size, total, totalPages, next, previous);
+        return new Page<>(list, page, size, total, pages, next, previous);
     }
 
     public static <T> Page<T> of(List<T> list, Integer page, Integer size) {
@@ -186,18 +205,9 @@ public class Page<T> implements Serializable {
         return new ArrayList<>(collection);
     }
 
-
     public <U> Page<U> map(Function<? super T, ? extends U> converter) {
         return new Page<>(list == null ? null : list.stream().map(converter).collect(Collectors.toList()),
-                page, size, total, totalPages, next, previous);
-    }
-
-    public int getCurrent() {
-        return list != null ? list.size() : 0;
-    }
-
-    public boolean isEmpty() {
-        return list == null || list.isEmpty();
+                page, size, total, pages, next, previous, extra);
     }
 
     public List<T> getList() {
@@ -232,12 +242,12 @@ public class Page<T> implements Serializable {
         this.total = total;
     }
 
-    public Long getTotalPages() {
-        return totalPages;
+    public Long getPages() {
+        return pages;
     }
 
-    public void setTotalPages(Long totalPages) {
-        this.totalPages = totalPages;
+    public void setPages(Long pages) {
+        this.pages = pages;
     }
 
     public Boolean getNext() {
@@ -256,6 +266,25 @@ public class Page<T> implements Serializable {
         this.previous = previous;
     }
 
+    public Object getExtra() {
+        return extra;
+    }
+
+    public void setExtra(Object extra) {
+        this.extra = extra;
+    }
+
+    public <E> E getExtra(Class<E> type) {
+        return type.cast(extra);
+    }
+
+    public boolean isEmpty() {
+        return list == null || list.isEmpty();
+    }
+
+    public boolean isPaged() {
+        return list != null && page != null && size != null && total != null;
+    }
 
     public static <T> Builder<T> builder() {
         return new Builder<>();
@@ -266,9 +295,10 @@ public class Page<T> implements Serializable {
         private Integer page;
         private Integer size;
         private Long total;
-        private Long totalPages;
+        private Long pages;
         private Boolean next;
         private Boolean previous;
+        private Object extra;
 
         public Builder<T> list(List<T> list) {
             this.list = list;
@@ -290,8 +320,8 @@ public class Page<T> implements Serializable {
             return this;
         }
 
-        public Builder<T> totalPages(Long totalPages) {
-            this.totalPages = totalPages;
+        public Builder<T> pages(Long pages) {
+            this.pages = pages;
             return this;
         }
 
@@ -305,8 +335,13 @@ public class Page<T> implements Serializable {
             return this;
         }
 
+        public Builder<T> extra(Object extra) {
+            this.extra = extra;
+            return this;
+        }
+
         public Page<T> build() {
-            return new Page<>(list, page, size, total, totalPages, next, previous);
+            return new Page<>(list, page, size, total, pages, next, previous, extra);
         }
 
     }
