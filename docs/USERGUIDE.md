@@ -14,14 +14,14 @@ Please make sure the Java version is 1.8 and above.
 <dependency>
     <groupId>io.leego</groupId>
     <artifactId>mypages</artifactId>
-    <version>1.1.0</version>
+    <version>1.1.1</version>
 </dependency>
 ```
 
 ## 3.2 Gradle
 
 ```xml
-implementation 'io.leego:mypages:1.1.0'
+implementation 'io.leego:mypages:1.1.1'
 ```
 
 # 4. Quick Setup
@@ -172,7 +172,7 @@ PaginationSettings settings = PaginationSettings.builder()
 PaginationInterceptor interceptor = new PaginationInterceptor(settings);
 ```
 
-### 6.2.1 Define classes
+### 6.2.1 Define a class
 
 Define a class with paging parameters.
 
@@ -469,11 +469,262 @@ Page<Foo> result = Page.of(fooMapper.query(pageable));
 #### 9.1.2 Convert
 
 ```java
-Page<Bar> result = Page.of(fooMapper.query(pageable), foo -> new Bar(foo));
+Page<Bar> result=Page.of(fooMapper.query(pageable),foo->new Bar(foo));
 ```
 
 #### 9.1.3 Mapping
 
 ```java
-Page<Bar> result = Page.of(fooMapper.query(pageable)).map(foo -> new Bar(foo));
+Page<Bar> result=Page.of(fooMapper.query(pageable)).map(foo->new Bar(foo));
+```
+
+## 9.2 Using Custom Pagination Class
+
+For example:
+
+#### 9.2.1 Custom Pagination Class
+
+Assume there is a class defined like the following:
+
+```java
+public class Pagination<T> implements Serializable {
+    private static final long serialVersionUID = 3214571808482585491L;
+    /** Data list. */
+    protected List<T> list;
+    /** One-based page index. */
+    protected Integer page;
+    /** The size of the page to be returned. */
+    protected Integer size;
+    /** The quantity of data. */
+    protected Long total;
+    /** The quantity of data pages. */
+    protected Long pages;
+    /** Returns {@code true} if there is a next page. */
+    protected Boolean next;
+    /** Returns {@code true} if there is a previous page. */
+    protected Boolean previous;
+
+    public Pagination() {
+    }
+
+    public Pagination(List<T> list) {
+        this.list = list;
+    }
+
+    public Pagination(List<T> list, Long total) {
+        this.list = list;
+        this.total = total;
+    }
+
+    public Pagination(List<T> list, Integer page, Integer size) {
+        this.list = list;
+        this.page = page;
+        this.size = size;
+    }
+
+    public Pagination(List<T> list, Integer page, Integer size, Long total, Long pages, Boolean next, Boolean previous) {
+        this.list = list;
+        this.page = page;
+        this.size = size;
+        this.total = total;
+        this.pages = pages;
+        this.next = next;
+        this.previous = previous;
+    }
+
+    public static <T> Pagination<T> of(List<T> list, Integer page, Integer size, Long total, Long pages, Boolean next, Boolean previous) {
+        return new Pagination<>(list, page, size, total, pages, next, previous);
+    }
+
+    public static <T> Pagination<T> of(List<T> list, Integer page, Integer size, Long total) {
+        if (page == null || size == null) {
+            return new Pagination<>(list, total);
+        }
+        if (total == null) {
+            return new Pagination<>(list, page, size);
+        }
+        boolean next;
+        boolean previous;
+        long pages;
+        if (page > 0 && size > 0) {
+            next = page.longValue() * size < total;
+            previous = page != 1;
+            pages = total % size > 0 ? total / size + 1 : total / size;
+        } else {
+            next = false;
+            previous = false;
+            pages = 0L;
+        }
+        return new Pagination<>(list, page, size, total, pages, next, previous);
+    }
+
+    public static <T> Pagination<T> of(List<T> list, Integer page, Integer size) {
+        return new Pagination<>(list, page, size);
+    }
+
+    public static <T> Pagination<T> of(List<T> list, Long total) {
+        return new Pagination<>(list, total);
+    }
+
+    public static <T> Pagination<T> of(List<T> list) {
+        return new Pagination<>(list);
+    }
+
+    public static <T> Pagination<T> of(Collection<T> collection) {
+        if (collection == null) {
+            return new Pagination<>(new ArrayList<>());
+        }
+        if (collection instanceof List) {
+            return new Pagination<>((List<T>) collection);
+        }
+        return new Pagination<>(new ArrayList<>(collection));
+    }
+
+    public static <T> Pagination<T> empty() {
+        return new Pagination<>(new ArrayList<>());
+    }
+
+    public <U> Pagination<U> map(Function<? super T, ? extends U> converter) {
+        return new Pagination<>(list == null ? null : list.stream().map(converter).collect(Collectors.toList()),
+                page, size, total, pages, next, previous);
+    }
+
+    public List<T> getList() {
+        return list;
+    }
+
+    public void setList(List<T> list) {
+        this.list = list;
+    }
+
+    public Integer getPage() {
+        return page;
+    }
+
+    public void setPage(Integer page) {
+        this.page = page;
+    }
+
+    public Integer getSize() {
+        return size;
+    }
+
+    public void setSize(Integer size) {
+        this.size = size;
+    }
+
+    public Long getTotal() {
+        return total;
+    }
+
+    public void setTotal(Long total) {
+        this.total = total;
+    }
+
+    public Long getPages() {
+        return pages;
+    }
+
+    public void setPages(Long pages) {
+        this.pages = pages;
+    }
+
+    public Boolean getNext() {
+        return next;
+    }
+
+    public void setNext(Boolean next) {
+        this.next = next;
+    }
+
+    public Boolean getPrevious() {
+        return previous;
+    }
+
+    public void setPrevious(Boolean previous) {
+        this.previous = previous;
+    }
+}
+```
+
+#### 9.2.2 Pagination Utils
+
+For example:
+
+```java
+public final class PaginationUtils {
+    private PaginationUtils() {
+    }
+
+    public static <T> Pagination<T> of(List<T> source) {
+        if (source == null) {
+            return Pagination.empty();
+        }
+        if (!(source instanceof PaginationList)) {
+            return Pagination.of(source);
+        }
+        PaginationList<T> s = (PaginationList<T>) source;
+        return Pagination.of(source, s.getPage(), s.getSize(), s.getTotal());
+    }
+
+    public static <T> Pagination<T> of(Collection<T> source) {
+        if (source == null) {
+            return Pagination.empty();
+        }
+        if (!(source instanceof PaginationCollection)) {
+            return Pagination.of(source);
+        }
+        PaginationCollection<T> s = (PaginationCollection<T>) source;
+        return Pagination.of(toList(source), s.getPage(), s.getSize(), s.getTotal());
+    }
+
+    public static <T, S> Pagination<T> of(Collection<S> source, Function<? super S, ? extends T> mapper) {
+        if (source == null) {
+            return Pagination.empty();
+        }
+        if (!(source instanceof PaginationCollection)) {
+            return Pagination.of(mapping(source, mapper));
+        }
+        PaginationCollection<S> s = (PaginationCollection<S>) source;
+        return Pagination.of(mapping(source, mapper), s.getPage(), s.getSize(), s.getTotal());
+    }
+
+    public static <T, S> Pagination<T> transfer(Collection<S> source, Collection<T> target) {
+        if (source == null || target == null) {
+            return Pagination.empty();
+        }
+        if (!(source instanceof PaginationCollection)) {
+            return Pagination.of(toList(target));
+        }
+        PaginationCollection<S> s = (PaginationCollection<S>) source;
+        return Pagination.of(toList(target), s.getPage(), s.getSize(), s.getTotal());
+    }
+
+    private static <T, S> List<T> mapping(Collection<S> source, Function<? super S, ? extends T> mapper) {
+        Objects.requireNonNull(mapper);
+        if (source == null || source.isEmpty()) {
+            return new ArrayList<>();
+        }
+        return source.stream().map(mapper).collect(Collectors.toList());
+    }
+
+    private static <T> List<T> toList(Collection<T> collection) {
+        if (collection == null) {
+            return new ArrayList<>();
+        }
+        if (collection instanceof List) {
+            return (List<T>) collection;
+        }
+        return new ArrayList<>(collection);
+    }
+
+}
+```
+
+```java
+Pagination<Foo> result=PaginationUtils.of(fooMapper.query(pageable));
+```
+
+```java
+Pagination<Bar> result=PaginationUtils.of(fooMapper.query(pageable),foo->new Bar(foo));
 ```
