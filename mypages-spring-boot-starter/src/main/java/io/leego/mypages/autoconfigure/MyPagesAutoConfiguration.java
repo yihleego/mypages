@@ -5,10 +5,8 @@ import io.leego.mypages.interceptor.PaginationInterceptor;
 import io.leego.mypages.interceptor.PaginationSettings;
 import org.apache.ibatis.plugin.Interceptor;
 import org.apache.ibatis.session.SqlSessionFactory;
-import org.mybatis.spring.boot.autoconfigure.MybatisAutoConfiguration;
 import org.springframework.beans.factory.InitializingBean;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.autoconfigure.AutoConfigureAfter;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -22,10 +20,8 @@ import java.util.List;
  * @author Yihleego
  */
 @Configuration
-@ConditionalOnBean(SqlSessionFactory.class)
 @ConditionalOnProperty(value = "spring.mypages.enabled", matchIfMissing = true)
 @EnableConfigurationProperties(MyPagesProperties.class)
-@AutoConfigureAfter(MybatisAutoConfiguration.class)
 public class MyPagesAutoConfiguration {
 
     @Bean
@@ -56,7 +52,7 @@ public class MyPagesAutoConfiguration {
     }
 
     @Configuration
-    @ConditionalOnBean({SqlSessionFactory.class})
+    @ConditionalOnBean(SqlSessionFactory.class)
     public static class PaginationInterceptorConfiguration implements InitializingBean {
         @Autowired(required = false)
         private List<SqlSessionFactory> sqlSessionFactories;
