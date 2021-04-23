@@ -14,14 +14,14 @@ MyPages是Java实现基于[MyBatis](https://github.com/mybatis/mybatis-3)的开�
 <dependency>
     <groupId>io.leego</groupId>
     <artifactId>mypages-spring-boot-starter</artifactId>
-    <version>1.1.1</version>
+    <version>1.1.2</version>
 </dependency>
 ```
 
 ## 3.2 Gradle
 
 ```xml
-implementation 'io.leego:mypages-spring-boot-starter:1.1.1'
+implementation 'io.leego:mypages-spring-boot-starter:1.1.2'
 ```
 
 # 4. 配置

@@ -8,7 +8,7 @@
 
     <groupId>io.leego</groupId>
     <artifactId>mypages-parent</artifactId>
-    <version>1.1.1</version>
+    <version>1.1.2</version>
     <packaging>pom</packaging>
     <name>${project.artifactId}</name>
     <description>MyPages is a java based, open source pagination plugin for MyBatis that simplifies database paging queries.</description>
