@@ -1,6 +1,6 @@
 package io.leego.mypages.dialect;
 
-import io.leego.mypages.util.PaginationParam;
+import io.leego.mypages.util.PaginationParameter;
 
 /**
  * @author Yihleego
@@ -8,14 +8,14 @@ import io.leego.mypages.util.PaginationParam;
 public class DB2Dialect extends AbstractDialect {
 
     @Override
-    public String getPagingSql(String sql) {
+    public String getPageSql(String sql) {
         return "SELECT *" +
                 " FROM (SELECT " + TEMP_TABLE_ALIAS + ".*, ROW_NUMBER() OVER() AS " + ROW_NUMBER_ALIAS + " FROM (" + sql + ") " + TEMP_TABLE_ALIAS + ") " + PAGING_TABLE_ALIAS +
                 " WHERE " + ROW_NUMBER_ALIAS + " BETWEEN ? AND ?";
     }
 
     @Override
-    public Object[] getPagingParams(PaginationParam param) {
+    public Object[] appendParameterValues(PaginationParameter param) {
         return new Object[]{
                 param.getOffset() + 1,
                 param.getOffset() + param.getRows()};

@@ -1,6 +1,6 @@
 package io.leego.mypages.dialect;
 
-import io.leego.mypages.util.PaginationParam;
+import io.leego.mypages.util.PaginationParameter;
 import org.apache.ibatis.cache.CacheKey;
 import org.apache.ibatis.mapping.BoundSql;
 import org.apache.ibatis.mapping.MappedStatement;
@@ -10,13 +10,20 @@ import org.apache.ibatis.mapping.MappedStatement;
  */
 public interface Dialect {
 
-    String getPagingSql(String sql);
+    String getPageSql(String sql);
 
-    String getPagingSql(String sql, PaginationParam param);
+    String getPageSql(String sql, PaginationParameter paginationParameter);
 
     String getCountSql(String sql);
 
     String getCountSql(String sql, String expr);
 
-    Object assembleParameter(MappedStatement ms, Object parameter, BoundSql boundSql, CacheKey pageKey, PaginationParam param) throws Exception;
+    String getCountSql(String sql, String expr, boolean keepSorting);
+
+    String getSimpleCountSql(String sql);
+
+    String getSimpleCountSql(String sql, String expr);
+
+    Object handleParameter(MappedStatement ms, Object parameter, BoundSql boundSql, CacheKey cacheKey, PaginationParameter paginationParameter) throws Exception;
+
 }

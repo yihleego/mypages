@@ -1,38 +1,37 @@
 package io.leego.mypages.interceptor;
 
-import io.leego.mypages.dialect.Dialect;
-import io.leego.mypages.dialect.SqlDialect;
+import io.leego.mypages.dialect.Database;
 
 /**
  * @author Yihleego
  */
-public final class PaginationSettings {
-    /** The instance of {@link Dialect}. */
-    private Dialect dialect;
-    /** The specified SQL dialect. */
-    private SqlDialect sqlDialect;
+public class PaginationSettings {
+    /** The specified {@link Database}. */
+    private Database database;
     /** The column name or expression, the default value is <code>"*"</code>. */
     private String countExpr;
     /** The page field name. */
-    private String pageFieldName;
+    private String pageField;
     /** The size field name. */
-    private String sizeFieldName;
+    private String sizeField;
     /** The offset field name. */
-    private String offsetFieldName;
+    private String offsetField;
     /** The rows field name. */
-    private String rowsFieldName;
+    private String rowsField;
     /** The count expression field name. */
-    private String countExprFieldName;
+    private String countExprField;
     /** The count method name field name. */
-    private String countMethodNameFieldName;
-    /** The enable count field name. */
-    private String enableCountFieldName;
-    /** Whether to obtain values from parameter. */
-    private boolean obtainValuesFromFields = false;
+    private String countMethodNameField;
+    /** The count enabled field name. */
+    private String enableCountField;
     /** Whether to skip query if total value equals zero. */
     private boolean skipQueryIfCountEqualsZero = true;
     /** Whether to use generated if the specified count method is missing. */
     private boolean useGeneratedIfCountMethodIsMissing = true;
+    /** Whether to use graceful count sql. */
+    private boolean useGracefulCountSql = true;
+    /** Whether to keep sorting. */
+    private boolean keepSorting = false;
     /** Replaces <code>page</code> with <code>defaultPage</code> if <code>page</code> is invalid. */
     private int defaultPage = -1;
     /** Replaces <code>size</code> with <code>defaultSize</code> if <code>size</code> is invalid. */
@@ -45,48 +44,41 @@ public final class PaginationSettings {
     public PaginationSettings() {
     }
 
-    public PaginationSettings(Dialect dialect) {
-        this.dialect = dialect;
+    public PaginationSettings(Database database) {
+        this.database = database;
     }
 
-    public PaginationSettings(SqlDialect sqlDialect) {
-        this.sqlDialect = sqlDialect;
-    }
-
-    public PaginationSettings(Dialect dialect, SqlDialect sqlDialect, String countExpr, String pageFieldName, String sizeFieldName, String offsetFieldName, String rowsFieldName, String countExprFieldName, String countMethodNameFieldName, String enableCountFieldName, boolean obtainValuesFromFields, boolean skipQueryIfCountEqualsZero, boolean useGeneratedIfCountMethodIsMissing, int defaultPage, int defaultSize, int maxPage, int maxSize) {
-        this.dialect = dialect;
-        this.sqlDialect = sqlDialect;
+    public PaginationSettings(
+            Database database, String countExpr,
+            String pageField, String sizeField, String offsetField, String rowsField,
+            String countExprField, String countMethodNameField, String enableCountField,
+            boolean skipQueryIfCountEqualsZero, boolean useGeneratedIfCountMethodIsMissing, boolean useGracefulCountSql, boolean keepSorting,
+            int defaultPage, int defaultSize, int maxPage, int maxSize) {
+        this.database = database;
         this.countExpr = countExpr;
-        this.pageFieldName = pageFieldName;
-        this.sizeFieldName = sizeFieldName;
-        this.offsetFieldName = offsetFieldName;
-        this.rowsFieldName = rowsFieldName;
-        this.countExprFieldName = countExprFieldName;
-        this.countMethodNameFieldName = countMethodNameFieldName;
-        this.enableCountFieldName = enableCountFieldName;
-        this.obtainValuesFromFields = obtainValuesFromFields;
+        this.pageField = pageField;
+        this.sizeField = sizeField;
+        this.offsetField = offsetField;
+        this.rowsField = rowsField;
+        this.countExprField = countExprField;
+        this.countMethodNameField = countMethodNameField;
+        this.enableCountField = enableCountField;
         this.skipQueryIfCountEqualsZero = skipQueryIfCountEqualsZero;
         this.useGeneratedIfCountMethodIsMissing = useGeneratedIfCountMethodIsMissing;
+        this.useGracefulCountSql = useGracefulCountSql;
+        this.keepSorting = keepSorting;
         this.defaultPage = defaultPage;
         this.defaultSize = defaultSize;
         this.maxPage = maxPage;
         this.maxSize = maxSize;
     }
 
-    public Dialect getDialect() {
-        return dialect;
+    public Database getDatabase() {
+        return database;
     }
 
-    public void setDialect(Dialect dialect) {
-        this.dialect = dialect;
-    }
-
-    public SqlDialect getSqlDialect() {
-        return sqlDialect;
-    }
-
-    public void setSqlDialect(SqlDialect sqlDialect) {
-        this.sqlDialect = sqlDialect;
+    public void setDatabase(Database database) {
+        this.database = database;
     }
 
     public String getCountExpr() {
@@ -97,68 +89,60 @@ public final class PaginationSettings {
         this.countExpr = countExpr;
     }
 
-    public String getPageFieldName() {
-        return pageFieldName;
+    public String getPageField() {
+        return pageField;
     }
 
-    public void setPageFieldName(String pageFieldName) {
-        this.pageFieldName = pageFieldName;
+    public void setPageField(String pageField) {
+        this.pageField = pageField;
     }
 
-    public String getSizeFieldName() {
-        return sizeFieldName;
+    public String getSizeField() {
+        return sizeField;
     }
 
-    public void setSizeFieldName(String sizeFieldName) {
-        this.sizeFieldName = sizeFieldName;
+    public void setSizeField(String sizeField) {
+        this.sizeField = sizeField;
     }
 
-    public String getOffsetFieldName() {
-        return offsetFieldName;
+    public String getOffsetField() {
+        return offsetField;
     }
 
-    public void setOffsetFieldName(String offsetFieldName) {
-        this.offsetFieldName = offsetFieldName;
+    public void setOffsetField(String offsetField) {
+        this.offsetField = offsetField;
     }
 
-    public String getRowsFieldName() {
-        return rowsFieldName;
+    public String getRowsField() {
+        return rowsField;
     }
 
-    public void setRowsFieldName(String rowsFieldName) {
-        this.rowsFieldName = rowsFieldName;
+    public void setRowsField(String rowsField) {
+        this.rowsField = rowsField;
     }
 
-    public String getCountExprFieldName() {
-        return countExprFieldName;
+    public String getCountExprField() {
+        return countExprField;
     }
 
-    public void setCountExprFieldName(String countExprFieldName) {
-        this.countExprFieldName = countExprFieldName;
+    public void setCountExprField(String countExprField) {
+        this.countExprField = countExprField;
     }
 
-    public String getCountMethodNameFieldName() {
-        return countMethodNameFieldName;
+    public String getCountMethodNameField() {
+        return countMethodNameField;
     }
 
-    public void setCountMethodNameFieldName(String countMethodNameFieldName) {
-        this.countMethodNameFieldName = countMethodNameFieldName;
+    public void setCountMethodNameField(String countMethodNameField) {
+        this.countMethodNameField = countMethodNameField;
     }
 
-    public String getEnableCountFieldName() {
-        return enableCountFieldName;
+    public String getEnableCountField() {
+        return enableCountField;
     }
 
-    public void setEnableCountFieldName(String enableCountFieldName) {
-        this.enableCountFieldName = enableCountFieldName;
-    }
-
-    public boolean isObtainValuesFromFields() {
-        return obtainValuesFromFields;
-    }
-
-    public void setObtainValuesFromFields(boolean obtainValuesFromFields) {
-        this.obtainValuesFromFields = obtainValuesFromFields;
+    public void setEnableCountField(String enableCountField) {
+        this.enableCountField = enableCountField;
     }
 
     public boolean isSkipQueryIfCountEqualsZero() {
@@ -175,6 +159,22 @@ public final class PaginationSettings {
 
     public void setUseGeneratedIfCountMethodIsMissing(boolean useGeneratedIfCountMethodIsMissing) {
         this.useGeneratedIfCountMethodIsMissing = useGeneratedIfCountMethodIsMissing;
+    }
+
+    public boolean isUseGracefulCountSql() {
+        return useGracefulCountSql;
+    }
+
+    public void setUseGracefulCountSql(boolean useGracefulCountSql) {
+        this.useGracefulCountSql = useGracefulCountSql;
+    }
+
+    public boolean isKeepSorting() {
+        return keepSorting;
+    }
+
+    public void setKeepSorting(boolean keepSorting) {
+        this.keepSorting = keepSorting;
     }
 
     public int getDefaultPage() {
@@ -209,15 +209,8 @@ public final class PaginationSettings {
         this.maxSize = maxSize;
     }
 
-    public void initialize() {
-        if (this.dialect == null && this.sqlDialect == null) {
-            throw new NullPointerException("Dialect is not configured.");
-        }
-        this.obtainValuesFromFields = (this.pageFieldName != null && this.sizeFieldName != null)
-                || (this.offsetFieldName != null && this.rowsFieldName != null);
-        if (this.dialect == null) {
-            this.dialect = this.sqlDialect.newDialect();
-        }
+    public static PaginationSettings empty() {
+        return new PaginationSettings();
     }
 
     public static Builder builder() {
@@ -227,13 +220,8 @@ public final class PaginationSettings {
     public static class Builder {
         private final PaginationSettings settings = new PaginationSettings();
 
-        public Builder dialect(Dialect dialect) {
-            settings.setDialect(dialect);
-            return this;
-        }
-
-        public Builder sqlDialect(SqlDialect sqlDialect) {
-            settings.setSqlDialect(sqlDialect);
+        public Builder database(Database database) {
+            settings.setDatabase(database);
             return this;
         }
 
@@ -242,38 +230,38 @@ public final class PaginationSettings {
             return this;
         }
 
-        public Builder pageField(String pageFieldName) {
-            settings.setPageFieldName(pageFieldName);
+        public Builder pageField(String pageField) {
+            settings.setPageField(pageField);
             return this;
         }
 
-        public Builder sizeField(String sizeFieldName) {
-            settings.setSizeFieldName(sizeFieldName);
+        public Builder sizeField(String sizeField) {
+            settings.setSizeField(sizeField);
             return this;
         }
 
-        public Builder offsetField(String offsetFieldName) {
-            settings.setOffsetFieldName(offsetFieldName);
+        public Builder offsetField(String offsetField) {
+            settings.setOffsetField(offsetField);
             return this;
         }
 
-        public Builder rowsField(String rowsFieldName) {
-            settings.setRowsFieldName(rowsFieldName);
+        public Builder rowsField(String rowsField) {
+            settings.setRowsField(rowsField);
             return this;
         }
 
-        public Builder countExprField(String countExprFieldName) {
-            settings.setCountExprFieldName(countExprFieldName);
+        public Builder countExprField(String countExprField) {
+            settings.setCountExprField(countExprField);
             return this;
         }
 
-        public Builder countMethodNameField(String countMethodNameFieldName) {
-            settings.setCountMethodNameFieldName(countMethodNameFieldName);
+        public Builder countMethodNameField(String countMethodNameField) {
+            settings.setCountMethodNameField(countMethodNameField);
             return this;
         }
 
-        public Builder enableCountField(String enableCountFieldName) {
-            settings.setEnableCountFieldName(enableCountFieldName);
+        public Builder enableCountField(String enableCountField) {
+            settings.setEnableCountField(enableCountField);
             return this;
         }
 
@@ -284,6 +272,16 @@ public final class PaginationSettings {
 
         public Builder useGeneratedIfCountMethodIsMissing(boolean useGeneratedIfCountMethodIsMissing) {
             settings.setUseGeneratedIfCountMethodIsMissing(useGeneratedIfCountMethodIsMissing);
+            return this;
+        }
+
+        public Builder useGracefulCountSql(boolean useGracefulCountSql) {
+            settings.setUseGracefulCountSql(useGracefulCountSql);
+            return this;
+        }
+
+        public Builder keepSorting(boolean keepSorting) {
+            settings.setKeepSorting(keepSorting);
             return this;
         }
 
@@ -310,7 +308,5 @@ public final class PaginationSettings {
         public PaginationSettings build() {
             return settings;
         }
-
     }
-
 }

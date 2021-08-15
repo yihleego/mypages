@@ -1,6 +1,6 @@
 package io.leego.mypages.dialect;
 
-import io.leego.mypages.util.PaginationParam;
+import io.leego.mypages.util.PaginationParameter;
 
 /**
  * @author Yihleego
@@ -8,12 +8,12 @@ import io.leego.mypages.util.PaginationParam;
 public class InformixDialect extends AbstractDialect {
 
     @Override
-    public String getPagingSql(String sql) {
-        return "SELECT SKIP ? FIRST ? * FROM (" + sql + ")";
+    public String getPageSql(String sql) {
+        return "SELECT SKIP ? FIRST ? * FROM (" + sql + ") " + PAGING_TABLE_ALIAS;
     }
 
     @Override
-    public Object[] getPagingParams(PaginationParam param) {
+    public Object[] prependParameterValues(PaginationParameter param) {
         return new Object[]{
                 param.getOffset(),
                 param.getRows()};

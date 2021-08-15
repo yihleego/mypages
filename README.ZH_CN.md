@@ -20,14 +20,14 @@ $ mvn clean install
 <dependency>
     <groupId>io.leego</groupId>
     <artifactId>mypages</artifactId>
-    <version>1.1.2</version>
+    <version>2.0.0</version>
 </dependency>
 ```
 
 ### Gradle
 
 ```xml
-implementation 'io.leego:mypages:1.1.2'
+implementation 'io.leego:mypages:2.0.0'
 ```
 
 ## 数据库
@@ -36,18 +36,18 @@ implementation 'io.leego:mypages:1.1.2'
 |:-:|:-:|:-:|:-:|:-:|:-:|
 |MySQL|✔|PostgreSQL|✔|Oracle|✔|
 |MariaDB|✔|SQLite|✔|DB2|✔|
-|H2|✔|Phoenix|✔|Apache Derby|✔|
+|H2|✔|Apache Phoenix|✔|Apache Derby|✔|
 |HyperSQL|✔|Informix|✔|TiDB|✔|
-|SQL Server|✔|Apache Hive|✔|
+|Microsoft SQL Server|✔|Apache Hive|✔|
 
 ## 文档
 
 [English Document 英文版](README.md)
 
-> * [用户指南 (中文版)](docs/USERGUIDE.ZH_CN.md)
-> * [User Guide (English)](docs/USERGUIDE.md)
-> * [mypages-spring-boot-starter (中文版)](docs/STARTER_USERGUIDE.ZH_CN.md)
-> * [mypages-spring-boot-starter (English)](docs/STARTER_USERGUIDE.md)
+> * [用户指南 (中文版)](mypages/README.ZH_CN.md)
+> * [User Guide (English)](mypages/README.md)
+> * [mypages-spring-boot-starter (中文版)](mypages-spring-boot-starter/README.ZH_CN.md)
+> * [mypages-spring-boot-starter (English)](mypages-spring-boot-starter/README.md)
 
 ## 交流
 

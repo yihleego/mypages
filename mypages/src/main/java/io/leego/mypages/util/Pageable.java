@@ -12,10 +12,14 @@ public interface Pageable {
     Integer getSize();
 
     /** Returns zero-based row index. */
-    Integer getOffset();
+    default Long getOffset() {
+        return null;
+    }
 
     /** Returns the rows of the page to be returned. */
-    Integer getRows();
+    default Integer getRows() {
+        return null;
+    }
 
     /** Returns the column name or expression. */
     default String getCountExpr() {

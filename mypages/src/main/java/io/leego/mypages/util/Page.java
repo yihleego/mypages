@@ -4,7 +4,7 @@ import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
-import java.util.Objects;
+import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -188,7 +188,6 @@ public class Page<T> implements Serializable {
     }
 
     private static <T, S> List<T> mapping(Collection<S> source, Function<? super S, ? extends T> mapper) {
-        Objects.requireNonNull(mapper);
         if (source == null || source.isEmpty()) {
             return new ArrayList<>();
         }
@@ -208,6 +207,13 @@ public class Page<T> implements Serializable {
     public <U> Page<U> map(Function<? super T, ? extends U> converter) {
         return new Page<>(list == null ? null : list.stream().map(converter).collect(Collectors.toList()),
                 page, size, total, pages, next, previous, extra);
+    }
+
+    public Page<T> peek(Consumer<? super T> action) {
+        if (list != null) {
+            list.forEach(action);
+        }
+        return this;
     }
 
     public List<T> getList() {
@@ -346,4 +352,16 @@ public class Page<T> implements Serializable {
 
     }
 
+    @Override
+    public String toString() {
+        return "{page=" + page +
+                ", size=" + size +
+                ", total=" + total +
+                ", pages=" + pages +
+                ", next=" + next +
+                ", previous=" + previous +
+                ", extra=" + extra +
+                ", list=" + list +
+                '}';
+    }
 }

@@ -1,209 +1,219 @@
 package io.leego.mypages.util;
 
-import com.alibaba.druid.sql.SQLUtils;
-import com.alibaba.druid.sql.ast.SQLExpr;
-import com.alibaba.druid.sql.ast.SQLStatement;
-import com.alibaba.druid.sql.ast.expr.SQLAggregateExpr;
-import com.alibaba.druid.sql.ast.statement.SQLSelectGroupByClause;
-import com.alibaba.druid.sql.ast.statement.SQLSelectItem;
-import com.alibaba.druid.sql.ast.statement.SQLSelectQuery;
-import com.alibaba.druid.sql.ast.statement.SQLSelectQueryBlock;
-import com.alibaba.druid.sql.ast.statement.SQLSelectStatement;
-import com.alibaba.druid.util.JdbcConstants;
-import io.leego.mypages.dialect.SqlDialect;
-import io.leego.mypages.exception.IllegalSqlException;
+import io.leego.mypages.sql.SQLLexer;
+import io.leego.mypages.sql.SQLParser;
+import io.leego.mypages.sql.SQLParser.AggregationClauseContext;
+import io.leego.mypages.sql.SQLParser.ColumnReferenceContext;
+import io.leego.mypages.sql.SQLParser.ConstantDefaultContext;
+import io.leego.mypages.sql.SQLParser.CurrentLikeContext;
+import io.leego.mypages.sql.SQLParser.DereferenceContext;
+import io.leego.mypages.sql.SQLParser.ExpressionContext;
+import io.leego.mypages.sql.SQLParser.HavingClauseContext;
+import io.leego.mypages.sql.SQLParser.IdentifierContext;
+import io.leego.mypages.sql.SQLParser.NamedExpressionContext;
+import io.leego.mypages.sql.SQLParser.NamedExpressionSeqContext;
+import io.leego.mypages.sql.SQLParser.OverlayContext;
+import io.leego.mypages.sql.SQLParser.PredicatedContext;
+import io.leego.mypages.sql.SQLParser.QueryContext;
+import io.leego.mypages.sql.SQLParser.QueryOrganizationContext;
+import io.leego.mypages.sql.SQLParser.QueryPrimaryContext;
+import io.leego.mypages.sql.SQLParser.QueryPrimaryDefaultContext;
+import io.leego.mypages.sql.SQLParser.QuerySpecificationContext;
+import io.leego.mypages.sql.SQLParser.QueryTermContext;
+import io.leego.mypages.sql.SQLParser.QueryTermDefaultContext;
+import io.leego.mypages.sql.SQLParser.RegularQuerySpecificationContext;
+import io.leego.mypages.sql.SQLParser.SelectClauseContext;
+import io.leego.mypages.sql.SQLParser.SetQuantifierContext;
+import io.leego.mypages.sql.SQLParser.SingleStatementContext;
+import io.leego.mypages.sql.SQLParser.StarContext;
+import io.leego.mypages.sql.SQLParser.StatementDefaultContext;
+import io.leego.mypages.sql.SQLParser.SubqueryContext;
+import io.leego.mypages.sql.SQLParser.SubstringContext;
+import io.leego.mypages.sql.SQLParser.TrimContext;
+import io.leego.mypages.sql.SQLParser.ValueExpressionContext;
+import io.leego.mypages.sql.SQLParser.ValueExpressionDefaultContext;
+import org.antlr.v4.runtime.CharStreams;
+import org.antlr.v4.runtime.CommonTokenStream;
+import org.antlr.v4.runtime.tree.ErrorNode;
+import org.antlr.v4.runtime.tree.ParseTree;
+import org.antlr.v4.runtime.tree.TerminalNode;
 
-import java.util.Arrays;
-import java.util.Collections;
+import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.stream.Collectors;
 
 /**
  * @author Yihleego
  */
 public final class SqlUtils {
-    public static final String ASTERISK = "*";
-    private static final String DEFAULT_TABLE_ALIAS = "DTA";
-    private static final char OPENING_PARENTHESIS = '(';
-    private static final char CLOSING_PARENTHESIS = ')';
-    private static final SQLExpr COUNT_EXPR = SQLUtils.toSQLExpr("COUNT(*)");
-    /** Aggregate functions */
-    private static final String[] AGGREGATE_FUNCTION_NAMES = {
-            "avg",
-            "binary_checksum", "bit_and", "bit_or", "bit_xor",
-            "checksum", "checksum_agg", "count", "count_big",
-            "first",
-            "group_concat", "grouping",
-            "last",
-            "max", "median", "min",
-            "rank",
-            "std", "stddev", "stddev_pop", "stddev_samp", "stdev", "stdevp", "sum",
-            "var", "var_pop", "var_samp", "variance", "varp",
-    };
-    private static final Map<Character, Set<String>> AGGREGATE_FUNCTION_MAP = buildAggregateMap(AGGREGATE_FUNCTION_NAMES);
+    private static final String ASTERISK = "*";
 
     private SqlUtils() {
     }
 
-    public static String toCountSql(String sql, String alias) {
-        return toCountSql(sql, null, alias, null);
+    public static String toCountSql(String sql) {
+        return toCountSql(sql, ASTERISK, false);
     }
 
-    public static String toCountSql(String sql, String expr, String alias) {
-        return toCountSql(sql, expr, alias, null);
+    public static String toCountSql(String sql, boolean keepSorting) {
+        return toCountSql(sql, ASTERISK, keepSorting);
     }
 
-    public static String toCountSql(String sql, String alias, SqlDialect sqlDialect) {
-        return toCountSql(sql, null, alias, sqlDialect);
+    public static String toCountSql(String sql, String expr) {
+        return toCountSql(sql, expr, false);
     }
 
-    public static String toCountSql(String sql, String expr, String alias, SqlDialect sqlDialect) {
-        try {
-            // Parse statement with db type.
-            SQLStatement sqlStatement = SQLUtils.parseSingleStatement(sql, getDbType(sqlDialect));
-            if (!(sqlStatement instanceof SQLSelectStatement)) {
-                throw new IllegalSqlException("Unsupported non-query SQL");
-            }
-            SQLSelectStatement sqlSelectStatement = (SQLSelectStatement) sqlStatement;
-            SQLSelectQuery sqlSelectQuery = sqlSelectStatement.getSelect().getQuery();
-            if (!(sqlSelectQuery instanceof SQLSelectQueryBlock)) {
-                return toSimpleCountSql(sql, expr, alias);
-            }
-            // Return simple count SQL if it is a distinct query.
-            SQLSelectQueryBlock sqlSelectQueryBlock = (SQLSelectQueryBlock) sqlSelectQuery;
-            if (sqlSelectQueryBlock.isDistinct()) {
-                return toSimpleCountSql(sql, expr, alias);
-            }
-            // Return simple count SQL if there is "GROUP BY".
-            SQLSelectGroupByClause sqlSelectGroupByClause = sqlSelectQueryBlock.getGroupBy();
-            if (sqlSelectGroupByClause != null) {
-                return toSimpleCountSql(sql, expr, alias);
-            }
-            // Return simple count SQL if there are aggregate functions.
-            List<SQLSelectItem> sqlSelectItems = sqlSelectQueryBlock.getSelectList();
-            if (hasAnyAggregate(sqlSelectItems)) {
-                return toSimpleCountSql(sql, expr, alias);
-            }
-            if (sqlSelectItems != null && !sqlSelectItems.isEmpty()) {
-                // Remove select items.
-                sqlSelectItems.clear();
-            }
-            // Remove "ORDER BY".
-            sqlSelectQueryBlock.setOrderBy(null);
-            // Set count function.
-            SQLUtils.addSelectItem(sqlStatement, buildCountExpr(expr), null, true);
-            return sqlStatement.toString();
-        } catch (Exception ignored) {
-            return toSimpleCountSql(sql, expr, alias);
+    public static String toCountSql(String sql, String expr, boolean keepSorting) {
+        SQLParser parser = getParser(sql);
+        SingleStatementContext context = parser.singleStatement();
+        return convert(sql, expr, keepSorting, context);
+    }
+
+    private static String convert(String sql, String expr, boolean keepSorting, SingleStatementContext singleStatementContext) {
+        if (singleStatementContext.exception != null || singleStatementContext.getChildCount() <= 0) {
+            return null;
         }
-    }
-
-    public static String toSimpleCountSql(String sql, String alias) {
-        return "SELECT COUNT(" + ASTERISK + ") FROM (" + sql + ") "
-                + (StringUtils.isNotBlank(alias) ? alias : DEFAULT_TABLE_ALIAS);
-    }
-
-    public static String toSimpleCountSql(String sql, String expr, String alias) {
-        if (StringUtils.isBlank(expr)) {
-            expr = ASTERISK;
+        for (int i = 1; i < singleStatementContext.getChildCount(); i++) {
+            if (!(singleStatementContext.getChild(i) instanceof TerminalNode) || (singleStatementContext.getChild(i) instanceof ErrorNode)) {
+                return null;
+            }
         }
-        return "SELECT COUNT(" + expr + ") FROM (" + sql + ") "
-                + (StringUtils.isNotBlank(alias) ? alias : DEFAULT_TABLE_ALIAS);
-    }
-
-    public static SQLExpr buildCountExpr(String expr) {
-        if (StringUtils.isBlank(expr) || expr.equals(ASTERISK)) {
-            return COUNT_EXPR;
+        StatementDefaultContext statementDefaultContext = singleStatementContext.getChild(StatementDefaultContext.class, 0);
+        if (statementDefaultContext == null) {
+            return null;
         }
-        return SQLUtils.toSQLExpr("COUNT(" + expr + ")");
+        QueryContext queryContext = statementDefaultContext.getChild(QueryContext.class, 0);
+        if (queryContext == null) {
+            return null;
+        }
+        List<Replacement> replacements = new ArrayList<>();
+        if (!validateQuery(queryContext, expr, keepSorting, replacements)) {
+            return null;
+        }
+        if (replacements.isEmpty()) {
+            return sql;
+        }
+        StringBuilder sb = new StringBuilder(sql);
+        replacements.stream()
+                .sorted(Comparator.reverseOrder())
+                .forEach(replacement -> {
+                    if (replacement.getValue() == null) {
+                        sb.delete(replacement.getBegin(), replacement.getEnd());
+                    } else {
+                        sb.replace(replacement.getBegin(), replacement.getEnd(), replacement.getValue());
+                    }
+                });
+        return sb.toString();
     }
 
-    public static boolean hasAnyAggregate(List<SQLSelectItem> sqlSelectItems) {
-        if (sqlSelectItems == null || sqlSelectItems.isEmpty()) {
+    private static boolean validateQuery(QueryContext queryContext, String expr, boolean keepSorting, List<Replacement> replacements) {
+        return validateQueryTerm(queryContext.getChild(QueryTermDefaultContext.class, 0), expr, keepSorting, replacements)
+                && removeQueryOrganization(queryContext.getChild(QueryOrganizationContext.class, 0), keepSorting, replacements);
+    }
+
+    private static boolean validateQueryTerm(QueryTermContext queryTermContext, String expr, boolean keepSorting, List<Replacement> replacements) {
+        if (queryTermContext == null) {
             return false;
         }
-        for (SQLSelectItem item : sqlSelectItems) {
-            SQLExpr expr = item.getExpr();
-            String exprString = expr != null ? expr.toString() : null;
-            if (expr == null
-                    || StringUtils.isEmpty(exprString)
-                    || ASTERISK.equals(exprString)) {
+        QueryPrimaryContext queryPrimaryContext = queryTermContext.getChild(QueryPrimaryDefaultContext.class, 0);
+        if (queryPrimaryContext == null) {
+            SubqueryContext subqueryContext = queryTermContext.getChild(SubqueryContext.class, 0);
+            QueryContext innerQueryContext = subqueryContext.getChild(QueryContext.class, 0);
+            return validateQuery(innerQueryContext, expr, keepSorting, replacements);
+        }
+        QuerySpecificationContext querySpecificationContext = queryPrimaryContext.getChild(RegularQuerySpecificationContext.class, 0);
+        if (querySpecificationContext == null) {
+            return false;
+        }
+        SelectClauseContext selectClauseContext = querySpecificationContext.getChild(SelectClauseContext.class, 0);
+        AggregationClauseContext aggregationClauseContext = querySpecificationContext.getChild(AggregationClauseContext.class, 0);
+        HavingClauseContext havingClauseContext = querySpecificationContext.getChild(HavingClauseContext.class, 0);
+        if (selectClauseContext == null || aggregationClauseContext != null || havingClauseContext != null) {
+            return false;
+        }
+        SetQuantifierContext setQuantifierContext = selectClauseContext.getChild(SetQuantifierContext.class, 0);
+        if (setQuantifierContext != null) {
+            return false;
+        }
+        NamedExpressionSeqContext namedExpressionSeqContext = selectClauseContext.getChild(NamedExpressionSeqContext.class, 0);
+        if (namedExpressionSeqContext == null) {
+            return false;
+        }
+        for (int i = 0; i < namedExpressionSeqContext.getChildCount(); i++) {
+            ParseTree child = namedExpressionSeqContext.getChild(i);
+            if (!(child instanceof NamedExpressionContext)) {
                 continue;
             }
-            if (expr instanceof SQLAggregateExpr) {
-                return true;
+            NamedExpressionContext namedExpressionContext = (NamedExpressionContext) child;
+            ExpressionContext expressionContext = namedExpressionContext.getChild(ExpressionContext.class, 0);
+            PredicatedContext predicatedContext = expressionContext.getChild(PredicatedContext.class, 0);
+            if (predicatedContext == null) {
+                return false;
             }
-            if (isAggregate(exprString)) {
-                return true;
+            ValueExpressionContext valueExpressionContext = predicatedContext.getChild(ValueExpressionDefaultContext.class, 0);
+            if (valueExpressionContext == null) {
+                return false;
             }
-        }
-        return false;
-    }
-
-    private static boolean isAggregate(String expr) {
-        if (expr.indexOf(OPENING_PARENTHESIS) == -1) {
+            ParseTree primaryExpressionContext = valueExpressionContext.getChild(0);
+            if (isSimpleExpression(primaryExpressionContext)) {
+                continue;
+            }
             return false;
         }
-        String lowerCaseExpr = expr.toLowerCase();
-        Set<String> aggregateFunctions = AGGREGATE_FUNCTION_MAP.get(lowerCaseExpr.charAt(0));
-        if (aggregateFunctions != null && !aggregateFunctions.isEmpty()) {
-            for (String aggregateFunction : aggregateFunctions) {
-                if (lowerCaseExpr.startsWith(aggregateFunction)) {
-                    return true;
-                }
-            }
+        if (namedExpressionSeqContext.children != null) {
+            replacements.add(new Replacement(
+                    namedExpressionSeqContext.getStart().getStartIndex(),
+                    namedExpressionSeqContext.getStop().getStopIndex() + 1,
+                    toCountFunction(expr)));
+        }
+        return true;
+    }
+
+    private static boolean isSimpleExpression(ParseTree primaryExpressionContext) {
+        if (primaryExpressionContext instanceof IdentifierContext
+                || primaryExpressionContext instanceof CurrentLikeContext
+                || primaryExpressionContext instanceof ConstantDefaultContext
+                || primaryExpressionContext instanceof StarContext
+                || primaryExpressionContext instanceof ColumnReferenceContext
+                || primaryExpressionContext instanceof SubstringContext
+                || primaryExpressionContext instanceof TrimContext
+                || primaryExpressionContext instanceof OverlayContext) {
+            return true;
+        } else if (primaryExpressionContext instanceof DereferenceContext) {
+            DereferenceContext dereferenceContext = (DereferenceContext) primaryExpressionContext;
+            return isSimpleExpression(dereferenceContext.base)
+                    && isSimpleExpression(dereferenceContext.fieldName);
         }
         return false;
     }
 
-    private static Map<Character, Set<String>> buildAggregateMap(String[] array) {
-        if (array == null || array.length == 0) {
-            return Collections.emptyMap();
+    private static boolean removeQueryOrganization(QueryOrganizationContext queryOrganizationContext, boolean keepSorting, List<Replacement> replacements) {
+        if (queryOrganizationContext != null && queryOrganizationContext.children != null) {
+            if (keepSorting) {
+                TerminalNode limit = queryOrganizationContext.getToken(SQLLexer.LIMIT, 0);
+                if (limit != null) {
+                    replacements.add(new Replacement(
+                            limit.getSymbol().getStartIndex(),
+                            queryOrganizationContext.getStop().getStopIndex() + 1));
+                }
+            } else {
+                replacements.add(new Replacement(
+                        queryOrganizationContext.getStart().getStartIndex(),
+                        queryOrganizationContext.getStop().getStopIndex() + 1));
+            }
         }
-        return Collections.unmodifiableMap(
-                Arrays.stream(array)
-                        .map(o -> o.toLowerCase() + OPENING_PARENTHESIS)
-                        .collect(Collectors.groupingBy(o -> o.charAt(0), Collectors.toSet())));
+        return true;
     }
 
-    private static String getDbType(SqlDialect sqlDialect) {
-        if (sqlDialect == null) {
-            return JdbcConstants.MYSQL;
-        }
-        switch (sqlDialect) {
-            case DB2:
-                return JdbcConstants.DB2;
-            case DERBY:
-                return JdbcConstants.DERBY;
-            case H2:
-                return JdbcConstants.H2;
-            case HIVE:
-                return JdbcConstants.HIVE;
-            case HSQLDB:
-                return JdbcConstants.HSQL;
-            case INFORMIX:
-                return JdbcConstants.INFORMIX;
-            case MARIADB:
-                return JdbcConstants.MARIADB;
-            case MYSQL:
-                return JdbcConstants.MYSQL;
-            case ORACLE:
-                return JdbcConstants.ORACLE;
-            case PHOENIX:
-                return JdbcConstants.PHOENIX;
-            case POSTGRESQL:
-                return JdbcConstants.POSTGRESQL;
-            case SQLITE:
-                return JdbcConstants.SQLITE;
-            case SQLSERVER:
-                return JdbcConstants.SQL_SERVER;
-            case TIDB:
-                return JdbcConstants.MYSQL;
-            default:
-                return JdbcConstants.MYSQL;
-        }
+    private static String toCountFunction(String expr) {
+        return expr == null || expr.isEmpty() || ASTERISK.equals(expr) ? "COUNT(*)" : "COUNT(" + expr + ")";
     }
 
+    private static SQLParser getParser(String s) {
+        SQLLexer lexer = new SQLLexer(CharStreams.fromString(s));
+        SQLParser parser = new SQLParser(new CommonTokenStream(lexer));
+        parser.removeErrorListeners();
+        parser.removeParseListeners();
+        return parser;
+    }
 }

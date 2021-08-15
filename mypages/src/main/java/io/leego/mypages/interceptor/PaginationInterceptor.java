@@ -9,15 +9,13 @@ import io.leego.mypages.annotation.Page;
 import io.leego.mypages.annotation.Pagination;
 import io.leego.mypages.annotation.Rows;
 import io.leego.mypages.annotation.Size;
+import io.leego.mypages.dialect.Database;
 import io.leego.mypages.dialect.Dialect;
 import io.leego.mypages.exception.PaginationException;
-import io.leego.mypages.util.BeanUtils;
 import io.leego.mypages.util.Pageable;
 import io.leego.mypages.util.PaginationCollectionFactory;
-import io.leego.mypages.util.PaginationParam;
-import io.leego.mypages.util.PaginationUnrefinedParam;
-import io.leego.mypages.util.ReflectUtils;
-import io.leego.mypages.util.StringUtils;
+import io.leego.mypages.util.PaginationDefinition;
+import io.leego.mypages.util.PaginationParameter;
 import org.apache.ibatis.cache.CacheKey;
 import org.apache.ibatis.executor.Executor;
 import org.apache.ibatis.mapping.BoundSql;
@@ -32,18 +30,15 @@ import org.apache.ibatis.plugin.Signature;
 import org.apache.ibatis.session.ResultHandler;
 import org.apache.ibatis.session.RowBounds;
 
-import java.beans.IntrospectionException;
-import java.beans.PropertyDescriptor;
-import java.lang.annotation.Annotation;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
+import java.lang.reflect.Modifier;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Properties;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
@@ -55,15 +50,41 @@ import java.util.concurrent.ConcurrentMap;
         @Signature(type = Executor.class, method = "query", args = {MappedStatement.class, Object.class, RowBounds.class, ResultHandler.class}),
         @Signature(type = Executor.class, method = "query", args = {MappedStatement.class, Object.class, RowBounds.class, ResultHandler.class, CacheKey.class, BoundSql.class})})
 public class PaginationInterceptor implements Interceptor {
+    private static final ConcurrentMap<String, MappedStatement> countMsCacheMap = new ConcurrentHashMap<>(64);
+    private static final ConcurrentMap<String, PaginationDefinition> definitionCacheMap = new ConcurrentHashMap<>(64);
     private final Dialect dialect;
     private final PaginationSettings settings;
-    private final ConcurrentMap<String, MappedStatement> countMsMap = new ConcurrentHashMap<>(64);
-    private final ConcurrentMap<String, PaginationUnrefinedParam> unrefinedParamMap = new ConcurrentHashMap<>(64);
+
+    public PaginationInterceptor(Database database) {
+        if (database == null) {
+            throw new IllegalArgumentException("Please specify a database type.");
+        }
+        this.dialect = database.newDialect();
+        this.settings = PaginationSettings.empty();
+    }
 
     public PaginationInterceptor(PaginationSettings settings) {
-        settings.initialize();
+        if (settings.getDatabase() == null) {
+            throw new IllegalArgumentException("Please specify a database type.");
+        }
+        this.dialect = settings.getDatabase().newDialect();
         this.settings = settings;
-        this.dialect = settings.getDialect();
+    }
+
+    public PaginationInterceptor(Dialect dialect) {
+        if (dialect == null) {
+            throw new IllegalArgumentException("Please specify a sql dialect.");
+        }
+        this.dialect = dialect;
+        this.settings = PaginationSettings.empty();
+    }
+
+    public PaginationInterceptor(Dialect dialect, PaginationSettings settings) {
+        if (dialect == null) {
+            throw new IllegalArgumentException("Please specify a sql dialect.");
+        }
+        this.dialect = dialect;
+        this.settings = settings;
     }
 
     @Override
@@ -76,13 +97,13 @@ public class PaginationInterceptor implements Interceptor {
         if (!isPageable(parameter, returnType)) {
             return invocation.proceed();
         }
-        PaginationParam param = analyseParameter(parameter, ms.getId());
-        if (!param.isPageable()) {
+        PaginationParameter paginationParameter = analyseParameter(parameter, ms.getId());
+        if (paginationParameter == null) {
             return invocation.proceed();
         }
         Executor executor = (Executor) invocation.getTarget();
         RowBounds rowBounds = (RowBounds) args[2];
-        ResultHandler resultHandler = (ResultHandler) args[3];
+        ResultHandler<?> resultHandler = (ResultHandler<?>) args[3];
         BoundSql boundSql;
         CacheKey cacheKey;
         if (args.length == 4) {
@@ -93,14 +114,14 @@ public class PaginationInterceptor implements Interceptor {
             cacheKey = (CacheKey) args[4];
         }
         Long total = null;
-        if (isCounting(parameter)) {
-            total = count(executor, ms, boundSql, parameter, resultHandler, param.getCountExpr(), param.getCountMethodName());
+        if (isCountable(parameter)) {
+            total = count(executor, ms, boundSql, parameter, resultHandler, paginationParameter.getCountExpr(), paginationParameter.getCountMethodName());
             if (total == 0 && settings.isSkipQueryIfCountEqualsZero()) {
-                return PaginationCollectionFactory.build(returnType, total, param.getPage(), param.getSize());
+                return PaginationCollectionFactory.build(returnType, total, paginationParameter.getPage(), paginationParameter.getSize());
             }
         }
-        List<?> result = query(executor, ms, boundSql, parameter, resultHandler, cacheKey, param);
-        return PaginationCollectionFactory.build(returnType, result, total, param.getPage(), param.getSize());
+        List<?> result = query(executor, ms, boundSql, parameter, rowBounds, resultHandler, cacheKey, paginationParameter);
+        return PaginationCollectionFactory.build(returnType, result, total, paginationParameter.getPage(), paginationParameter.getSize());
     }
 
     @Override
@@ -110,38 +131,39 @@ public class PaginationInterceptor implements Interceptor {
 
     @Override
     public void setProperties(Properties properties) {
-        // ignored
     }
 
     /**
      * Returns count quantity.
      */
-    private Long count(Executor executor, MappedStatement ms, BoundSql boundSql, Object parameter, ResultHandler resultHandler, String countExpr, String countMsId) throws SQLException {
+    private Long count(Executor executor, MappedStatement ms, BoundSql boundSql, Object parameter, ResultHandler<?> resultHandler, String countExpr, String countMsId) throws SQLException {
         Object value;
-        if (StringUtils.isEmpty(countMsId)) {
+        if (isEmpty(countMsId)) {
             value = countByGenerated(executor, ms, boundSql, parameter, resultHandler, countExpr);
         } else {
             value = countBySpecified(executor, ms, boundSql, parameter, resultHandler, countExpr, countMsId);
         }
-        return value != null ? parseLong(((List) value).get(0)) : 0L;
+        return value != null ? parseLong(((List<?>) value).get(0)) : 0L;
     }
 
     /**
      * Returns count quantity by the generated SQL.
      */
-    private Object countByGenerated(Executor executor, MappedStatement ms, BoundSql boundSql, Object parameter, ResultHandler resultHandler, String countExpr) throws SQLException {
-        MappedStatement countMs = countMsMap.computeIfAbsent(buildCountMsKey(ms), id -> newCountMappedStatement(ms, id));
-        CacheKey countKey = executor.createCacheKey(countMs, parameter, RowBounds.DEFAULT, boundSql);
+    private Object countByGenerated(Executor executor, MappedStatement ms, BoundSql boundSql, Object parameter, ResultHandler<?> resultHandler, String countExpr) throws SQLException {
+        MappedStatement countMs = countMsCacheMap.computeIfAbsent(buildCountMsKey(ms), id -> createCountMappedStatement(ms, id));
+        CacheKey cacheKey = executor.createCacheKey(countMs, parameter, RowBounds.DEFAULT, boundSql);
         String originSql = boundSql.getSql();
-        String countSql = dialect.getCountSql(originSql, countExpr);
-        BoundSql countBoundSql = newBoundSql(ms, boundSql, countSql);
-        return executor.query(countMs, parameter, RowBounds.DEFAULT, resultHandler, countKey, countBoundSql);
+        String countSql = settings.isUseGracefulCountSql()
+                ? dialect.getCountSql(originSql, countExpr, settings.isKeepSorting())
+                : dialect.getSimpleCountSql(originSql, countExpr);
+        BoundSql countBoundSql = createBoundSql(ms, boundSql, countSql);
+        return executor.query(countMs, parameter, RowBounds.DEFAULT, resultHandler, cacheKey, countBoundSql);
     }
 
     /**
      * Returns count quantity by the specified SQL.
      */
-    private Object countBySpecified(Executor executor, MappedStatement ms, BoundSql boundSql, Object parameter, ResultHandler resultHandler, String countExpr, String countMsId) throws SQLException {
+    private Object countBySpecified(Executor executor, MappedStatement ms, BoundSql boundSql, Object parameter, ResultHandler<?> resultHandler, String countExpr, String countMsId) throws SQLException {
         MappedStatement countMs = null;
         Throwable cause = null;
         try {
@@ -150,9 +172,9 @@ public class PaginationInterceptor implements Interceptor {
             cause = t;
         }
         if (countMs != null) {
-            CacheKey countKey = executor.createCacheKey(countMs, parameter, RowBounds.DEFAULT, ms.getBoundSql(parameter));
+            CacheKey cacheKey = executor.createCacheKey(countMs, parameter, RowBounds.DEFAULT, ms.getBoundSql(parameter));
             BoundSql countBoundSql = countMs.getBoundSql(parameter);
-            return executor.query(countMs, parameter, RowBounds.DEFAULT, resultHandler, countKey, countBoundSql);
+            return executor.query(countMs, parameter, RowBounds.DEFAULT, resultHandler, cacheKey, countBoundSql);
         }
         if (settings.isUseGeneratedIfCountMethodIsMissing()) {
             return countByGenerated(executor, ms, boundSql, parameter, resultHandler, countExpr);
@@ -163,12 +185,12 @@ public class PaginationInterceptor implements Interceptor {
     /**
      * Returns paging query results.
      */
-    private <E> List<E> query(Executor executor, MappedStatement ms, BoundSql boundSql, Object parameter, ResultHandler resultHandler, CacheKey cacheKey, PaginationParam param) throws Exception {
-        Object assembledParameter = dialect.assembleParameter(ms, parameter, boundSql, cacheKey, param);
+    private <E> List<E> query(Executor executor, MappedStatement ms, BoundSql boundSql, Object parameter, RowBounds rowBounds, ResultHandler<?> resultHandler, CacheKey cacheKey, PaginationParameter paginationParameter) throws Exception {
+        Object assembledParameter = dialect.handleParameter(ms, parameter, boundSql, cacheKey, paginationParameter);
         String originSql = boundSql.getSql();
-        String paginationSql = dialect.getPagingSql(originSql, param);
-        BoundSql paginationBoundSql = newBoundSql(ms, boundSql, paginationSql);
-        return executor.query(ms, assembledParameter, RowBounds.DEFAULT, resultHandler, cacheKey, paginationBoundSql);
+        String paginationSql = dialect.getPageSql(originSql, paginationParameter);
+        BoundSql paginationBoundSql = createBoundSql(ms, boundSql, paginationSql);
+        return executor.query(ms, assembledParameter, rowBounds, resultHandler, cacheKey, paginationBoundSql);
     }
 
     /**
@@ -177,7 +199,7 @@ public class PaginationInterceptor implements Interceptor {
      * @param msId New id
      * @return a new instanced object of {@link MappedStatement}
      */
-    private MappedStatement newCountMappedStatement(MappedStatement ms, String msId) {
+    private MappedStatement createCountMappedStatement(MappedStatement ms, String msId) {
         MappedStatement.Builder builder = new MappedStatement.Builder(ms.getConfiguration(), msId, ms.getSqlSource(), ms.getSqlCommandType());
         builder.resource(ms.getResource());
         builder.fetchSize(ms.getFetchSize());
@@ -212,7 +234,7 @@ public class PaginationInterceptor implements Interceptor {
      * @param sql      SQL string
      * @return a new instanced object of {@link BoundSql}
      */
-    private BoundSql newBoundSql(MappedStatement ms, BoundSql boundSql, String sql) {
+    private BoundSql createBoundSql(MappedStatement ms, BoundSql boundSql, String sql) {
         BoundSql newBoundSql = new BoundSql(ms.getConfiguration(), sql, boundSql.getParameterMappings(), boundSql.getParameterObject());
         for (ParameterMapping mapping : boundSql.getParameterMappings()) {
             String prop = mapping.getProperty();
@@ -229,14 +251,9 @@ public class PaginationInterceptor implements Interceptor {
      * @param returnType Return type
      */
     private boolean isPageable(Object parameter, Class<?> returnType) {
-        if (parameter == null
-                || !Collection.class.isAssignableFrom(returnType)
-                || parameter.getClass().getAnnotation(DisablePagination.class) != null) {
-            return false;
-        }
-        return settings.isObtainValuesFromFields()
-                || parameter instanceof Pageable
-                || parameter.getClass().getAnnotation(Pagination.class) != null;
+        return parameter != null
+                && Collection.class.isAssignableFrom(returnType)
+                && parameter.getClass().getAnnotation(DisablePagination.class) == null;
     }
 
     /**
@@ -244,45 +261,55 @@ public class PaginationInterceptor implements Interceptor {
      * and enable count equals <code>true</code>.
      * @param parameter The parameter
      */
-    private boolean isCounting(Object parameter) {
+    private boolean isCountable(Object parameter) {
         if (parameter.getClass().getAnnotation(DisableCount.class) != null) {
             return false;
         }
-        if (StringUtils.isEmpty(settings.getEnableCountFieldName())) {
-            return true;
+        if (!isEmpty(settings.getEnableCountField())) {
+            try {
+                Field field = getField(parameter.getClass(), settings.getEnableCountField());
+                Boolean b = parseBoolean(getFieldValue(parameter, field));
+                return b != null && b;
+            } catch (Exception e) {
+                return false;
+            }
         }
-        try {
-            Object value = BeanUtils.read(parameter, settings.getEnableCountFieldName());
-            return parseBoolean(value, false);
-        } catch (Exception e) {
-            return false;
-        }
+        return true;
     }
 
     /**
-     * Returns {@link PaginationParam} from parameter.
+     * Returns {@link PaginationParameter} from parameter.
      * @param parameter The parameter
-     * @return {@link PaginationParam}
+     * @return {@link PaginationParameter}
      */
-    private PaginationParam analyseParameter(Object parameter, String msId) {
-        String key = buildUnrefinedParamKey(parameter, msId);
-        PaginationUnrefinedParam unrefinedParam = unrefinedParamMap.get(key);
-        if (unrefinedParam == null) {
-            unrefinedParam = getPaginationUnrefinedParam(parameter);
-            if (unrefinedParam.isInvalid()) {
-                return PaginationParam.nonPagination();
-            }
-            unrefinedParamMap.putIfAbsent(key, unrefinedParam);
+    private PaginationParameter analyseParameter(Object parameter, String msId) {
+        PaginationDefinition definition = definitionCacheMap.computeIfAbsent(
+                buildDefinitionParamKey(parameter, msId),
+                ignored -> buildPaginationDefinition(parameter));
+        if (!definition.isValid()) {
+            return null;
         }
-        int defaultPage = unrefinedParam.getDefaultPage();
-        int defaultSize = unrefinedParam.getDefaultSize();
-        int maxPage = unrefinedParam.getMaxPage();
-        int maxSize = unrefinedParam.getMaxSize();
+        return isEmpty(definition.getNestedMapKey())
+                ? buildPaginationParameter(parameter, definition)
+                : buildPaginationParameter(((Map<?, ?>) parameter).get(definition.getNestedMapKey()), definition);
+    }
+
+    /**
+     * Builds {@link PaginationParameter} from parameter.
+     * @param parameter  The parameter
+     * @param definition {@link PaginationDefinition}
+     * @return {@link PaginationParameter}
+     */
+    private PaginationParameter buildPaginationParameter(Object parameter, PaginationDefinition definition) {
+        int defaultPage = definition.getDefaultPage();
+        int defaultSize = definition.getDefaultSize();
+        int maxPage = definition.getMaxPage();
+        int maxSize = definition.getMaxSize();
         String countExpr;
         String countMethodName;
         Integer page;
         Integer size;
-        Integer offset;
+        Long offset;
         Integer rows;
         boolean usePageSize;
         boolean useOffsetRows;
@@ -294,25 +321,24 @@ public class PaginationInterceptor implements Interceptor {
             rows = pageable.getRows();
             countExpr = pageable.getCountExpr();
             countMethodName = pageable.getCountMethodName();
-        } else if (unrefinedParam.isMapType()) {
-            Map parameterMap = (Map) parameter;
-            page = parseInteger(getMapValue(parameterMap, settings.getPageFieldName()));
-            size = parseInteger(getMapValue(parameterMap, settings.getSizeFieldName()));
-            offset = parseInteger(getMapValue(parameterMap, settings.getOffsetFieldName()));
-            rows = parseInteger(getMapValue(parameterMap, settings.getRowsFieldName()));
-            countExpr = parseString(getMapValue(parameterMap, settings.getCountExprFieldName()));
-            countMethodName = parseString(getMapValue(parameterMap, settings.getCountMethodNameFieldName()));
+        } else if (parameter instanceof Map) {
+            Map<?, ?> parameterMap = (Map<?, ?>) parameter;
+            page = parseInteger(getMapValue(parameterMap, settings.getPageField()));
+            size = parseInteger(getMapValue(parameterMap, settings.getSizeField()));
+            offset = parseLong(getMapValue(parameterMap, settings.getOffsetField()));
+            rows = parseInteger(getMapValue(parameterMap, settings.getRowsField()));
+            countExpr = parseString(getMapValue(parameterMap, settings.getCountExprField()));
+            countMethodName = parseString(getMapValue(parameterMap, settings.getCountMethodNameField()));
         } else {
-            page = invokeInteger(parameter, unrefinedParam.getPageReadMethod());
-            size = invokeInteger(parameter, unrefinedParam.getSizeReadMethod());
-            offset = invokeInteger(parameter, unrefinedParam.getOffsetReadMethod());
-            rows = invokeInteger(parameter, unrefinedParam.getRowsReadMethod());
-            countExpr = invokeString(parameter, unrefinedParam.getCountExprReadMethod());
-            countMethodName = invokeString(parameter, unrefinedParam.getCountMethodNameReadMethod());
+            page = parseInteger(getValue(parameter, definition.getPageField(), definition.getPageReadMethod()));
+            size = parseInteger(getValue(parameter, definition.getSizeField(), definition.getSizeReadMethod()));
+            offset = parseLong(getValue(parameter, definition.getOffsetField(), definition.getOffsetReadMethod()));
+            rows = parseInteger(getValue(parameter, definition.getRowsField(), definition.getRowsReadMethod()));
+            countExpr = parseString(getValue(parameter, definition.getCountExprField(), definition.getCountExprReadMethod()));
+            countMethodName = parseString(getValue(parameter, definition.getCountMethodNameField(), definition.getCountMethodNameReadMethod()));
         }
-        if (StringUtils.isEmpty(countExpr)
-                && StringUtils.isNotEmpty(unrefinedParam.getCountExpr())) {
-            countExpr = unrefinedParam.getCountExpr();
+        if (isEmpty(countExpr) && !isEmpty(definition.getCountExpr())) {
+            countExpr = definition.getCountExpr();
         }
         usePageSize = page != null && size != null;
         useOffsetRows = offset != null && rows != null;
@@ -329,285 +355,231 @@ public class PaginationInterceptor implements Interceptor {
             if (size > maxSize && maxSize > 0) {
                 size = maxSize;
             }
-            offset = (page - 1) * size;
+            offset = (page - 1L) * size;
             rows = size;
         } else if (useOffsetRows) {
             if (rows <= 0 && defaultSize > 0) {
                 rows = defaultSize;
             }
             if (offset <= 0 && defaultPage > 0) {
-                offset = (defaultPage - 1) * rows;
+                offset = (defaultPage - 1L) * rows;
             }
             if (rows > maxSize && maxSize > 0) {
                 rows = maxSize;
             }
             if (offset / rows + 1 > maxPage && maxPage > 0) {
-                offset = (maxPage - 1) * rows;
+                offset = (maxPage - 1L) * rows;
             }
-            // Converts [offset, rows] to [page, size] if rows can be divided by offset.
+            // Convert [offset, rows] to [page, size] if rows can be divided by offset.
             if (rows > 0 && offset % rows == 0) {
-                page = offset / rows + 1;
+                page = (int) (offset / rows + 1);
                 size = rows;
             } else {
                 page = null;
                 size = null;
             }
         } else {
-            return PaginationParam.nonPagination();
+            return null;
         }
-        return new PaginationParam(page, size, offset, rows, countExpr, countMethodName, true);
+        return new PaginationParameter(page, size, offset, rows, countExpr, countMethodName);
     }
 
     /**
-     * Returns {@link PaginationUnrefinedParam} from parameter.
+     * Builds {@link PaginationDefinition} from parameter.
      * @param parameter The parameter
-     * @return {@link PaginationUnrefinedParam}
+     * @return {@link PaginationDefinition}
      */
-    private PaginationUnrefinedParam getPaginationUnrefinedParam(Object parameter) {
-        // There may be an object that extends Pageable.
-        if (parameter instanceof Pageable) {
-            return buildPaginationUnrefinedParam(parameter, false);
-        }
-        // There may be a map.
+    private PaginationDefinition buildPaginationDefinition(Object parameter) {
         if (parameter instanceof Map) {
-            return buildPaginationUnrefinedParam(parameter, true);
+            // Support for annotation '@Param' with a single object.
+            Map<?, ?> parameterMap = (Map<?, ?>) parameter;
+            Map.Entry<?, ?> o = null;
+            if (parameterMap.size() == 1) {
+                Map.Entry<?, ?>[] entries = parameterMap.entrySet().toArray(new Map.Entry<?, ?>[0]);
+                if (entries[0].getValue() != null
+                        && !(entries[0].getValue() instanceof Number)
+                        && !(entries[0].getValue() instanceof CharSequence)) {
+                    o = entries[0];
+                }
+            } else if (parameterMap.size() == 2) {
+                Map.Entry<?, ?>[] entries = parameterMap.entrySet().toArray(new Map.Entry<?, ?>[0]);
+                if (entries[0].getValue() != null
+                        && entries[0].getValue() == entries[1].getValue()
+                        && !(entries[0].getValue() instanceof Number)
+                        && !(entries[0].getValue() instanceof CharSequence)) {
+                    o = entries[0];
+                }
+            }
+            if (o != null) {
+                PaginationDefinition definition = createPaginationDefinition(o.getValue());
+                if (definition.isValid()) {
+                    definition.setNestedMapKey(String.valueOf(o.getKey()));
+                }
+                return definition;
+            }
         }
+        return createPaginationDefinition(parameter);
+    }
+
+    /**
+     * Creates {@link PaginationDefinition} from parameter.
+     * @param parameter The parameter
+     * @return {@link PaginationDefinition}
+     */
+    private PaginationDefinition createPaginationDefinition(Object parameter) {
+        Pagination pagination = parameter.getClass().getAnnotation(Pagination.class);
+        // It might be an instance of 'Pageable' or 'Map'.
+        if (parameter instanceof Pageable || parameter instanceof Map) {
+            return createPaginationDefinitionWithDefaultValue(pagination);
+        }
+        Field pageField = null;
+        Field sizeField = null;
+        Field offsetField = null;
+        Field rowsField = null;
+        Field countExprField = null;
+        Field countMethodNameField = null;
         Method pageReadMethod = null;
         Method sizeReadMethod = null;
         Method offsetReadMethod = null;
         Method rowsReadMethod = null;
         Method countExprReadMethod = null;
         Method countMethodNameReadMethod = null;
-        // Obtains read-method from configuration.
-        if (settings.isObtainValuesFromFields()) {
-            PropertyDescriptor[] pds;
-            try {
-                pds = BeanUtils.getPropertyDescriptors(parameter.getClass());
-            } catch (IntrospectionException ignored) {
-                pds = null;
-            }
-            if (pds != null && pds.length > 0) {
-                for (PropertyDescriptor pd : pds) {
-                    if (Objects.equals(settings.getPageFieldName(), pd.getName())) {
-                        pageReadMethod = pd.getReadMethod();
-                    } else if (Objects.equals(settings.getSizeFieldName(), pd.getName())) {
-                        sizeReadMethod = pd.getReadMethod();
-                    } else if (Objects.equals(settings.getOffsetFieldName(), pd.getName())) {
-                        offsetReadMethod = pd.getReadMethod();
-                    } else if (Objects.equals(settings.getRowsFieldName(), pd.getName())) {
-                        rowsReadMethod = pd.getReadMethod();
-                    } else if (Objects.equals(settings.getCountExprFieldName(), pd.getName())) {
-                        countExprReadMethod = pd.getReadMethod();
-                    } else if (Objects.equals(settings.getCountMethodNameFieldName(), pd.getName())) {
-                        countMethodNameReadMethod = pd.getReadMethod();
-                    }
+        // Obtain the fields and methods that should be used to read the property value.
+        List<Field> fields = getFields(parameter.getClass());
+        List<Method> methods = getMethods(parameter.getClass());
+        if (pagination != null) {
+            for (Field field : fields) {
+                if (field.getAnnotation(Page.class) != null) {
+                    pageField = field;
+                } else if (field.getAnnotation(Size.class) != null) {
+                    sizeField = field;
+                } else if (field.getAnnotation(Offset.class) != null) {
+                    offsetField = field;
+                } else if (field.getAnnotation(Rows.class) != null) {
+                    rowsField = field;
+                } else if (field.getAnnotation(CountExpr.class) != null) {
+                    countExprField = field;
+                } else if (field.getAnnotation(CountMethodName.class) != null) {
+                    countMethodNameField = field;
                 }
             }
-        }
-        // Obtains read-method by field annotations.
-        Field[] fields = ReflectUtils.getDeepFields(parameter, true);
-        for (Field field : fields) {
-            Annotation[] annotations = field.getDeclaredAnnotations();
-            if (annotations.length == 0) {
-                continue;
-            }
-            for (Annotation annotation : annotations) {
-                try {
-                    if (annotation instanceof Page) {
-                        pageReadMethod = BeanUtils.getReadMethod(field);
-                    } else if (annotation instanceof Size) {
-                        sizeReadMethod = BeanUtils.getReadMethod(field);
-                    } else if (annotation instanceof Offset) {
-                        offsetReadMethod = BeanUtils.getReadMethod(field);
-                    } else if (annotation instanceof Rows) {
-                        rowsReadMethod = BeanUtils.getReadMethod(field);
-                    } else if (annotation instanceof CountExpr) {
-                        countExprReadMethod = BeanUtils.getReadMethod(field);
-                    } else if (annotation instanceof CountMethodName) {
-                        countMethodNameReadMethod = BeanUtils.getReadMethod(field);
-                    }
-                } catch (IntrospectionException ignored) {
-                    // ignored
-                }
-            }
-        }
-        // Obtains read-method by method annotations.
-        Method[] methods = ReflectUtils.getDeepMethods(parameter, true);
-        for (Method method : methods) {
-            Annotation[] annotations = method.getDeclaredAnnotations();
-            if (annotations.length == 0) {
-                continue;
-            }
-            for (Annotation annotation : annotations) {
-                if (annotation instanceof Page) {
+            for (Method method : methods) {
+                if (pageReadMethod == null && method.getAnnotation(Page.class) != null) {
                     pageReadMethod = method;
-                } else if (annotation instanceof Size) {
+                } else if (sizeReadMethod == null && method.getAnnotation(Size.class) != null) {
                     sizeReadMethod = method;
-                } else if (annotation instanceof Offset) {
+                } else if (offsetReadMethod == null && method.getAnnotation(Offset.class) != null) {
                     offsetReadMethod = method;
-                } else if (annotation instanceof Rows) {
+                } else if (rowsReadMethod == null && method.getAnnotation(Rows.class) != null) {
                     rowsReadMethod = method;
-                } else if (annotation instanceof CountExpr) {
+                } else if (countExprReadMethod == null && method.getAnnotation(CountExpr.class) != null) {
                     countExprReadMethod = method;
-                } else if (annotation instanceof CountMethodName) {
+                } else if (countMethodNameReadMethod == null && method.getAnnotation(CountMethodName.class) != null) {
                     countMethodNameReadMethod = method;
                 }
             }
         }
-        if (pageReadMethod == null
-                && sizeReadMethod == null
-                && offsetReadMethod == null
-                && rowsReadMethod == null) {
-            return PaginationUnrefinedParam.invalidation();
+        if ((settings.getPageField() != null && settings.getSizeField() != null) || (settings.getOffsetField() != null && settings.getRowsField() != null)) {
+            for (Field field : fields) {
+                if (pageField == null && field.getName().equals(settings.getPageField())) {
+                    pageField = field;
+                } else if (sizeField == null && field.getName().equals(settings.getSizeField())) {
+                    sizeField = field;
+                } else if (offsetField == null && field.getName().equals(settings.getOffsetField())) {
+                    offsetField = field;
+                } else if (rowsField == null && field.getName().equals(settings.getRowsField())) {
+                    rowsField = field;
+                } else if (countExprField == null && field.getName().equals(settings.getCountExprField())) {
+                    countExprField = field;
+                } else if (countMethodNameField == null && field.getName().equals(settings.getCountMethodNameField())) {
+                    countMethodNameField = field;
+                }
+            }
         }
-        PaginationUnrefinedParam unrefinedParam = buildPaginationUnrefinedParam(parameter, false);
-        unrefinedParam.setMethods(
-                pageReadMethod,
-                sizeReadMethod,
-                offsetReadMethod,
-                rowsReadMethod,
-                countExprReadMethod,
-                countMethodNameReadMethod);
-        return unrefinedParam;
+        if (pageField == null && sizeField == null && offsetField == null && rowsField == null
+                && pageReadMethod == null && sizeReadMethod == null && offsetReadMethod == null && rowsReadMethod == null) {
+            return PaginationDefinition.INVALID;
+        }
+        return createPaginationDefinitionWithDefaultValue(pagination)
+                .setFields(pageField, sizeField, offsetField, rowsField, countExprField, countMethodNameField)
+                .setMethods(pageReadMethod, sizeReadMethod, offsetReadMethod, rowsReadMethod, countExprReadMethod, countMethodNameReadMethod);
     }
 
     /**
-     * Builds {@link PaginationUnrefinedParam} from parameter.
-     * @param parameter The parameter
-     * @param mapType   Whether it is a map type
-     * @return {@link PaginationUnrefinedParam}
+     * Creates {@link PaginationDefinition} from parameter with default value.
+     * @param pagination {@link Pagination}
+     * @return {@link PaginationDefinition}
      */
-    private PaginationUnrefinedParam buildPaginationUnrefinedParam(Object parameter, boolean mapType) {
-        Pagination pagination = parameter.getClass().getAnnotation(Pagination.class);
+    private PaginationDefinition createPaginationDefinitionWithDefaultValue(Pagination pagination) {
         if (pagination != null) {
-            return new PaginationUnrefinedParam(
+            return new PaginationDefinition(
                     pagination.defaultPage() > 0 ? pagination.defaultPage() : settings.getDefaultPage(),
                     pagination.defaultSize() > 0 ? pagination.defaultSize() : settings.getDefaultSize(),
                     pagination.maxPage() > 0 ? pagination.maxPage() : settings.getMaxPage(),
                     pagination.maxSize() > 0 ? pagination.maxSize() : settings.getMaxSize(),
-                    StringUtils.isNotEmpty(pagination.countExpr()) ? pagination.countExpr() : settings.getCountExpr(),
-                    mapType,
-                    true);
+                    !isEmpty(pagination.countExpr()) ? pagination.countExpr() : settings.getCountExpr());
         } else {
-            return new PaginationUnrefinedParam(
+            return new PaginationDefinition(
                     settings.getDefaultPage(),
                     settings.getDefaultSize(),
                     settings.getMaxPage(),
                     settings.getMaxSize(),
-                    settings.getCountExpr(),
-                    mapType,
-                    true);
-        }
-    }
-
-    /**
-     * Returns {@link Integer} value by invoking method.
-     * And try to convert to {@link Integer} value
-     * if it is a {@link String} value.
-     * @param o      target
-     * @param method {@link Method}
-     * @return {@link Integer} value
-     */
-    private Integer invokeInteger(Object o, Method method) {
-        Object value = invoke(o, method);
-        return parseInteger(value);
-    }
-
-    /**
-     * Returns {@link String} value by invoking method.
-     * @param o      target
-     * @param method {@link Method}
-     * @return {@link String} value
-     */
-    private String invokeString(Object o, Method method) {
-        Object value = invoke(o, method);
-        if (value == null) {
-            return null;
-        }
-        if (value instanceof String) {
-            return (String) value;
-        }
-        return null;
-    }
-
-    /**
-     * Invokes method.
-     * @param o      target
-     * @param method {@link Method}
-     * @return {@link Boolean} value
-     */
-    private Object invoke(Object o, Method method) {
-        if (o == null || method == null) {
-            return null;
-        }
-        try {
-            return BeanUtils.read(o, method);
-        } catch (Exception ignored) {
-            return null;
+                    settings.getCountExpr());
         }
     }
 
     /**
      * Returns the value to which the specified key is mapped,
      * or {@code null} if this map contains no mapping for the key.
-     * @param map It may be an object of {@link org.apache.ibatis.binding.MapperMethod.ParamMap}
+     * @param map It might be an object of {@link org.apache.ibatis.binding.MapperMethod.ParamMap}
      * @param key The key whose associated value is to be returned
      * @return The value to which the specified key is mapped
      */
-    private Object getMapValue(Map map, Object key) {
+    private Object getMapValue(Map<?, ?> map, Object key) {
         if (map == null || key == null) {
             return null;
         }
+        // DO NOT use the 'get' method, It might be an instance of MapperMethod$ParamMap.
+        // It might throw a ‘key not found’ exception, if this map contains no mapping for the key.
+        return map.getOrDefault(key, null);
+    }
+
+    private Object getFieldValue(Object o, Field filed) {
+        if (o == null || filed == null) {
+            return null;
+        }
         try {
-            // The map may be an object of {@link MapperMethod.ParamMap}
-            return map.get(key);
-        } catch (Throwable ignored) {
+            if (!Modifier.isPublic(filed.getModifiers())) {
+                filed.setAccessible(true);
+            }
+            return filed.get(o);
+        } catch (Exception ignored) {
             return null;
         }
     }
 
-    /**
-     * Parses the object argument as a string.
-     */
-    private String parseString(Object value) {
-        if (value == null) {
+    private Object invokeMethod(Object o, Method method) {
+        if (o == null || method == null) {
             return null;
         }
-        if (value instanceof String) {
-            return (String) value;
+        try {
+            if (!Modifier.isPublic(method.getModifiers())) {
+                method.setAccessible(true);
+            }
+            return method.invoke(o);
+        } catch (Exception ignored) {
+            return null;
         }
-        return String.valueOf(value);
     }
 
-    /**
-     * Parses the object argument as a boolean.
-     */
-    private boolean parseBoolean(Object value, boolean defaultValue) {
-        if (value == null) {
-            return defaultValue;
+    private Object getValue(Object o, Field field, Method method) {
+        Object value = getFieldValue(o, field);
+        if (value != null) {
+            return value;
         }
-        if (value instanceof Boolean) {
-            return (boolean) value;
-        } else if (value instanceof Number) {
-            // Returns false if the value equals 0.
-            return ((Number) value).intValue() != 0;
-        } else if (value instanceof String) {
-            String s = (String) value;
-            // Returns true if the text equals "true".
-            if ("true".equalsIgnoreCase(s)) {
-                return true;
-            }
-            // Returns false if the text equals "false".
-            if ("false".equalsIgnoreCase(s)) {
-                return false;
-            }
-        }
-        return defaultValue;
+        return invokeMethod(o, method);
     }
 
-    /**
-     * Parses the object argument as a signed decimal integer.
-     */
     private Integer parseInteger(Object value) {
         if (value == null) {
             return null;
@@ -620,9 +592,6 @@ public class PaginationInterceptor implements Interceptor {
         return null;
     }
 
-    /**
-     * Parses the object argument as a signed decimal long.
-     */
     private Long parseLong(Object value) {
         if (value == null) {
             return null;
@@ -635,18 +604,81 @@ public class PaginationInterceptor implements Interceptor {
         return null;
     }
 
-    /**
-     * Returns count MappedStatement key.
-     */
+    private String parseString(Object value) {
+        if (value == null) {
+            return null;
+        }
+        if (value instanceof String) {
+            return (String) value;
+        }
+        return null;
+    }
+
+    private Boolean parseBoolean(Object value) {
+        if (value == null) {
+            return null;
+        }
+        if (value instanceof Boolean) {
+            return (boolean) value;
+        } else if (value instanceof Number) {
+            // Return false if the value equals 0.
+            return ((Number) value).intValue() != 0;
+        } else if (value instanceof String) {
+            String s = (String) value;
+            // Return true if the text equals "true".
+            if ("true".equalsIgnoreCase(s)) {
+                return true;
+            }
+            // Return false if the text equals "false".
+            if ("false".equalsIgnoreCase(s)) {
+                return false;
+            }
+        }
+        return null;
+    }
+
     private String buildCountMsKey(MappedStatement ms) {
         return ms.getId() + "__COUNT";
     }
 
-    /**
-     * Returns unrefined param key.
-     */
-    private String buildUnrefinedParamKey(Object parameter, String msId) {
+    private String buildDefinitionParamKey(Object parameter, String msId) {
         return msId + "#" + parameter.getClass().getName();
+    }
+
+    private boolean isEmpty(CharSequence s) {
+        return s == null || s.length() == 0;
+    }
+
+    private Field getField(Class<?> clazz, String name) {
+        Class<?> c = clazz;
+        while (c != null && c != Object.class) {
+            try {
+                return clazz.getDeclaredField(name);
+            } catch (NoSuchFieldException ignored) {
+            }
+            c = c.getSuperclass();
+        }
+        return null;
+    }
+
+    private List<Field> getFields(Class<?> clazz) {
+        List<Field> fields = new ArrayList<>();
+        Class<?> c = clazz;
+        while (c != null && c != Object.class) {
+            Collections.addAll(fields, c.getDeclaredFields());
+            c = c.getSuperclass();
+        }
+        return fields;
+    }
+
+    private List<Method> getMethods(Class<?> clazz) {
+        List<Method> methods = new ArrayList<>();
+        Class<?> c = clazz;
+        while (c != null && c != Object.class) {
+            Collections.addAll(methods, c.getDeclaredMethods());
+            c = c.getSuperclass();
+        }
+        return methods;
     }
 
     public Dialect getDialect() {
@@ -656,5 +688,4 @@ public class PaginationInterceptor implements Interceptor {
     public PaginationSettings getSettings() {
         return settings;
     }
-
 }

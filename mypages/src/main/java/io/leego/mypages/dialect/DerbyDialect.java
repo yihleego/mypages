@@ -1,6 +1,6 @@
 package io.leego.mypages.dialect;
 
-import io.leego.mypages.util.PaginationParam;
+import io.leego.mypages.util.PaginationParameter;
 
 /**
  * @author Yihleego
@@ -8,12 +8,12 @@ import io.leego.mypages.util.PaginationParam;
 public class DerbyDialect extends AbstractDialect {
 
     @Override
-    public String getPagingSql(String sql) {
+    public String getPageSql(String sql) {
         return sql + " OFFSET ? ROWS FETCH NEXT ? ROWS ONLY";
     }
 
     @Override
-    public Object[] getPagingParams(PaginationParam param) {
+    public Object[] appendParameterValues(PaginationParameter param) {
         return new Object[]{
                 param.getOffset(),
                 param.getRows()};
