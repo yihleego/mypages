@@ -122,6 +122,20 @@ public class SqlTests {
     }
 
     @Test
+    public void testHaving() {
+        String original = "select name from foo where id = 1 and name = 'name' having name is not null";
+        String expected = null;
+        test(original, expected);
+    }
+
+    @Test
+    public void testGroupByHaving() {
+        String original = "select name from foo where id = 1 and name = 'name' group by name having count(*) > 0";
+        String expected = null;
+        test(original, expected);
+    }
+
+    @Test
     public void testWithAs() {
         String original = "with temp as (select id, name from foo where name like 'name%')\n" +
                 "select id, name from temp where id = 1";
