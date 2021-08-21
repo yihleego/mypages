@@ -5,14 +5,12 @@ import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.boot.test.context.SpringBootTest;
 
 import java.util.Objects;
 
 /**
  * @author Yihleego
  */
-@SpringBootTest
 public class SqlTests {
     private static final Logger logger = LoggerFactory.getLogger(SqlTests.class);
 
@@ -273,14 +271,63 @@ public class SqlTests {
     }
 
     @Test
-    public void testFunctionCall() {
-        String original = "select max(id), avg(id), sum(id) from foo";
+    public void testCountFunction() {
+        String original = "select count(id) from foo";
         String expected = null;
         test(original, expected);
     }
 
     @Test
-    public void testSubQueryExpression() {
+    public void testMaxFunction() {
+        String original = "select max(id) from foo";
+        String expected = null;
+        test(original, expected);
+    }
+
+    @Test
+    public void testAvgFunction() {
+        String original = "select avg(id) from foo";
+        String expected = null;
+        test(original, expected);
+    }
+
+    @Test
+    public void testSumFunction() {
+        String original = "select sum(id) from foo";
+        String expected = null;
+        test(original, expected);
+    }
+
+    @Test
+    public void testParenthesizedCountFunction() {
+        String original = "select (count(id)) from foo";
+        String expected = null;
+        test(original, expected);
+    }
+
+    @Test
+    public void testParenthesizedMaxFunction() {
+        String original = "select (max(id)) from foo";
+        String expected = null;
+        test(original, expected);
+    }
+
+    @Test
+    public void testParenthesizedAvgFunction() {
+        String original = "select (avg(id)) from foo";
+        String expected = null;
+        test(original, expected);
+    }
+
+    @Test
+    public void testParenthesizedSumFunction() {
+        String original = "select (sum(id)) from foo";
+        String expected = null;
+        test(original, expected);
+    }
+
+    @Test
+    public void testParenthesizedQueryExpression() {
         String original = "(select id, name from foo where id = 1 and name = 'name')";
         String expected = "(select COUNT(*) from foo where id = 1 and name = 'name')";
         test(original, expected);
