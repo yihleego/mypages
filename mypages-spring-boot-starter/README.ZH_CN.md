@@ -19,7 +19,7 @@ MyPages是Java实现基于[MyBatis](https://github.com/mybatis/mybatis-3)的开�
 # 4. 配置
 
 |Property|Description|Default|
-|:-|:-|:-|
+|:---|:---|:---|
 |mypages.enabled|是否启用分页插件|`true`|
 |mypages.database|指定数据库类型，如：`MySQL`、`PostgreSQL`、`Oracle`等||
 |mypages.count-expr|设置count表达式|`*`|

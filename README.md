@@ -1,7 +1,6 @@
 # MyPages
 
-MyPages is a java based, open source pagination plugin for [MyBatis](https://github.com/mybatis/mybatis-3) that simplifies database paging queries.
-Many databases, one plugin.
+MyPages is a java based, open source pagination plugin for [MyBatis](https://github.com/mybatis/mybatis-3) that simplifies database paging queries. Many databases, one plugin.
 
 ## Installation
 
@@ -33,13 +32,21 @@ implementation 'io.leego:mypages:2.0.0'
 
 ## Supported
 
-|Database|Supported|Database|Supported|Database|Supported|
-|:-:|:-:|:-:|:-:|:-:|:-:|
-|MySQL|✔|PostgreSQL|✔|Oracle|✔|
-|MariaDB|✔|SQLite|✔|DB2|✔|
-|H2|✔|Apache Phoenix|✔|Apache Derby|✔|
-|HyperSQL|✔|Informix|✔|TiDB|✔|
-|Microsoft SQL Server|✔|Apache Hive|✔|
+|Database|
+|:---|
+|![PostgreSQL](docs/databases/postgresql.svg) PostgreSQL|
+|![MySQL](docs/databases/mysql.svg) MySQL|
+|![Oracle](docs/databases/oracle.svg) Oracle|
+|![Microsoft SQL Server](docs/databases/sql_server.svg) Microsoft SQL Server|
+|![SQLite](docs/databases/sqlite.svg) SQLite|
+|![DB2](docs/databases/db2.svg) DB2|
+|![H2](docs/databases/h2.svg) H2|
+|![MariaDB](docs/databases/mariadb.svg) MariaDB|
+|![HSQLDB](docs/databases/hsqldb.svg) HSQLDB|
+|![Apache Phoenix](docs/databases/apache_phoenix.svg) Apache Phoenix|
+|![Apache Derby](docs/databases/apache_derby.svg) Apache Derby|
+|![Apache Hive](docs/databases/hive.svg) Apache Hive|
+|![Informix](docs/databases/informix.svg) Informix|
 
 ## Documentation
 
@@ -55,4 +62,5 @@ implementation 'io.leego:mypages:2.0.0'
 > * Bugs & Issues: [Click Here](https://github.com/yihleego/mypages/issues)
 
 ## License
+
 MyPages is under the Apache 2.0 license. See the [LICENSE](LICENSE.txt) file for details.

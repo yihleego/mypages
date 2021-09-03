@@ -19,7 +19,7 @@ Please make sure the Java version is 1.8 or above.
 # 4. Configuration
 
 |Property|Description|Default|
-|:-|:-|:-|
+|:---|:---|:---|
 |mypages.enabled|Whether to enable the plugin|`true`|
 |mypages.database|The database type such as `MySQL`, `PostgreSQL`, `Oracle`, etc||
 |mypages.count-expr|The column name or expression|`*`|
