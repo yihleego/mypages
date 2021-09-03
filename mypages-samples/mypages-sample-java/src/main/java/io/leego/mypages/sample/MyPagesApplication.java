@@ -19,6 +19,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.sql.DataSource;
+import java.time.LocalDateTime;
 import java.util.List;
 
 /**
@@ -36,9 +37,15 @@ public class MyPagesApplication {
         SqlSessionFactory sqlSessionFactory = sqlSessionFactory(dataSource);
         try (SqlSession session = sqlSessionFactory.openSession(false)) {
             UserMapper userMapper = session.getMapper(UserMapper.class);
-            List<User> list = userMapper.query(1, 10);
-            Page<User> page = Page.of(list);
-            logger.info("{}", page);
+            int i = 0;
+            while (true) {
+                List<User> list = userMapper.query(++i, 10, 1, LocalDateTime.now());
+                Page<User> page = Page.of(list);
+                logger.info("{}", page);
+                if (!page.getNext()) {
+                    break;
+                }
+            }
         }
     }
 

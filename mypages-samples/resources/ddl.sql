@@ -1,3 +1,5 @@
+create database mypages;
+use mypages;
 create table if not exists user
 (
     id           bigint primary key auto_increment not null,

@@ -809,6 +809,7 @@ valueExpression
     | operator=(MINUS | PLUS | TILDE) valueExpression                                        #arithmeticUnary
     | left=valueExpression operator=(ASTERISK | SLASH | PERCENT | DIV) right=valueExpression #arithmeticBinary
     | left=valueExpression operator=(PLUS | MINUS | CONCAT_PIPE) right=valueExpression       #arithmeticBinary
+    | left=valueExpression operator=(LEFT_SHIFT | RIGHT_SHIFT) right=valueExpression         #arithmeticBinary
     | left=valueExpression operator=AMPERSAND right=valueExpression                          #arithmeticBinary
     | left=valueExpression operator=HAT right=valueExpression                                #arithmeticBinary
     | left=valueExpression operator=PIPE right=valueExpression                               #arithmeticBinary
@@ -860,6 +861,7 @@ constant
     | number                                                                                   #numericLiteral
     | booleanValue                                                                             #booleanLiteral
     | STRING+                                                                                  #stringLiteral
+    | QUESTION_MARK                                                                            #questionMarkLiteral
     ;
 
 comparisonOperator
@@ -1808,6 +1810,8 @@ TILDE: '~';
 AMPERSAND: '&';
 PIPE: '|';
 CONCAT_PIPE: '||';
+LEFT_SHIFT: '<<';
+RIGHT_SHIFT: '>>';
 HAT: '^';
 UNDERSCORE: '_';
 EXCLAMATION: '!';
@@ -1867,6 +1871,10 @@ IDENTIFIER
 
 BACKQUOTED_IDENTIFIER
     : '`' ( ~'`' | '``' )* '`'
+    ;
+
+QUESTION_MARK
+    : '?'
     ;
 
 fragment DECIMAL_DIGITS

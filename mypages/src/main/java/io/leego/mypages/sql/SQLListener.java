@@ -1,3 +1,4 @@
+// Generated from SQL.g4 by ANTLR 4.9.1
 package io.leego.mypages.sql;
 import org.antlr.v4.runtime.tree.ParseTreeListener;
 
@@ -2572,6 +2573,18 @@ public interface SQLListener extends ParseTreeListener {
 	 * @param ctx the parse tree
 	 */
 	void exitStringLiteral(SQLParser.StringLiteralContext ctx);
+	/**
+	 * Enter a parse tree produced by the {@code questionMarkLiteral}
+	 * labeled alternative in {@link SQLParser#constant}.
+	 * @param ctx the parse tree
+	 */
+	void enterQuestionMarkLiteral(SQLParser.QuestionMarkLiteralContext ctx);
+	/**
+	 * Exit a parse tree produced by the {@code questionMarkLiteral}
+	 * labeled alternative in {@link SQLParser#constant}.
+	 * @param ctx the parse tree
+	 */
+	void exitQuestionMarkLiteral(SQLParser.QuestionMarkLiteralContext ctx);
 	/**
 	 * Enter a parse tree produced by {@link SQLParser#comparisonOperator}.
 	 * @param ctx the parse tree

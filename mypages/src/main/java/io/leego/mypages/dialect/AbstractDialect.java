@@ -106,38 +106,34 @@ public abstract class AbstractDialect implements Dialect {
         if (prependedValues != null) {
             for (int i = 0; i < prependedValues.length; i++) {
                 Object value = prependedValues[i];
-                // Prevent replacing original value.
-                String property = PAGINATION_PARAMETER + (suffix++);
-                while (parameterMap.containsKey(property)) {
-                    property = PAGINATION_PARAMETER + (suffix++);
+                if (value == null) {
+                    continue;
                 }
-                parameterMap.put(property, value);
+                // Prevent replacing original value.
+                String property;
+                while (parameterMap.putIfAbsent(property = PAGINATION_PARAMETER + (suffix++), value) != null) {/*ignored*/}
                 cacheKey.update(value);
-                ParameterMapping parameterMapping = new ParameterMapping.Builder(ms.getConfiguration(), property, value.getClass()).build();
-                parameterMappings.add(i, parameterMapping);
+                parameterMappings.add(i, new ParameterMapping.Builder(ms.getConfiguration(), property, value.getClass()).build());
             }
         }
         // Append parameters.
         if (appendedValues != null) {
             for (int i = 0; i < appendedValues.length; i++) {
                 Object value = appendedValues[i];
-                // Prevent replacing original value.
-                String property = PAGINATION_PARAMETER + (suffix++);
-                while (parameterMap.containsKey(property)) {
-                    property = PAGINATION_PARAMETER + (suffix++);
+                if (value == null) {
+                    continue;
                 }
-                parameterMap.put(property, value);
+                // Prevent replacing original value.
+                String property;
+                while (parameterMap.putIfAbsent(property = PAGINATION_PARAMETER + (suffix++), value) != null) {/*ignored*/}
                 cacheKey.update(value);
-                ParameterMapping parameterMapping = new ParameterMapping.Builder(ms.getConfiguration(), property, value.getClass()).build();
-                parameterMappings.add(parameterMapping);
+                parameterMappings.add(new ParameterMapping.Builder(ms.getConfiguration(), property, value.getClass()).build());
             }
         }
-        if (parameterMappings != boundSql.getParameterMappings()) {
-            // Overwrite the value of the parameterMappings.
-            Field field = BoundSql.class.getDeclaredField(PARAMETER_MAPPINGS);
-            field.setAccessible(true);
-            field.set(boundSql, parameterMappings);
-        }
+        // Overwrite the value of the parameterMappings.
+        Field field = BoundSql.class.getDeclaredField(PARAMETER_MAPPINGS);
+        field.setAccessible(true);
+        field.set(boundSql, parameterMappings);
         return parameterMap;
     }
 

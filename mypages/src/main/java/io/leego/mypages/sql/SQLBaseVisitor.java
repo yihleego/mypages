@@ -1,3 +1,4 @@
+// Generated from SQL.g4 by ANTLR 4.9.1
 package io.leego.mypages.sql;
 import org.antlr.v4.runtime.tree.AbstractParseTreeVisitor;
 
@@ -1613,6 +1614,13 @@ public class SQLBaseVisitor<T> extends AbstractParseTreeVisitor<T> implements SQ
 	 * {@link #visitChildren} on {@code ctx}.</p>
 	 */
 	@Override public T visitStringLiteral(SQLParser.StringLiteralContext ctx) { return visitChildren(ctx); }
+	/**
+	 * {@inheritDoc}
+	 *
+	 * <p>The default implementation returns the result of calling
+	 * {@link #visitChildren} on {@code ctx}.</p>
+	 */
+	@Override public T visitQuestionMarkLiteral(SQLParser.QuestionMarkLiteralContext ctx) { return visitChildren(ctx); }
 	/**
 	 * {@inheritDoc}
 	 *

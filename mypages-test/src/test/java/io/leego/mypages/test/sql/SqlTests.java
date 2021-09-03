@@ -327,10 +327,115 @@ public class SqlTests {
     }
 
     @Test
+    public void testFunctionOnly() {
+        String original = "select now()";
+        String expected = null;
+        test(original, expected);
+    }
+
+    @Test
+    public void testArithmetic() {
+        String original = "select id + 1, name from user where name = 'name'";
+        String expected = null;
+        test(original, expected);
+    }
+
+    @Test
+    public void testArithmeticOnly() {
+        String original = "select 1 + 1";
+        String expected = null;
+        test(original, expected);
+    }
+
+    @Test
+    public void testBitwiseOperator() {
+        String original = "select id << 10, name from user where name = 'name'";
+        String expected = null;
+        test(original, expected);
+    }
+
+    @Test
+    public void testBitwiseOperatorOnly() {
+        String original = "select 1 << 10";
+        String expected = null;
+        test(original, expected);
+    }
+
+    @Test
     public void testParenthesizedQueryExpression() {
         String original = "(select id, name from foo where id = 1 and name = 'name')";
         String expected = "(select COUNT(*) from foo where id = 1 and name = 'name')";
         test(original, expected);
+    }
+
+    @Test
+    public void testQuestionMarkExpression0() {
+        String original = "select id, name from foo where id = ?";
+        String expected = "select COUNT(*) from foo where id = ?";
+        test(original, expected);
+    }
+
+    @Test
+    public void testQuestionMarkExpression1() {
+        String original = "select id, name from foo where id = ? and name = 'name'";
+        String expected = "select COUNT(*) from foo where id = ? and name = 'name'";
+        test(original, expected);
+    }
+
+    @Test
+    public void testQuestionMarkExpression2() {
+        String original = "select id, name from foo where id = 1 and name = ?";
+        String expected = "select COUNT(*) from foo where id = 1 and name = ?";
+        test(original, expected);
+    }
+
+    @Test
+    public void testQuestionMarkExpression3() {
+        String original = "select id, name from foo where id = ? and name = ?";
+        String expected = "select COUNT(*) from foo where id = ? and name = ?";
+        test(original, expected);
+    }
+
+    @Test
+    public void testQuestionMarkExpression4() {
+        String original = "select id, name from foo where id = ? and name != ? and status > ? and priority <= ? and created_time between ? and ?";
+        String expected = "select COUNT(*) from foo where id = ? and name != ? and status > ? and priority <= ? and created_time between ? and ?";
+        test(original, expected);
+    }
+
+    @Test
+    public void testQuestionMarkExpression5() {
+        String original = "select id, name from foo where id = ? and name like concat('%', ?)";
+        String expected = "select COUNT(*) from foo where id = ? and name like concat('%', ?)";
+        test(original, expected);
+    }
+
+    @Test
+    public void testQuestionMarkExpression6() {
+        String original = "select ?, ? from foo where id = 1";
+        String expected = "select COUNT(*) from foo where id = 1";
+        test(original, expected);
+    }
+
+    @Test
+    public void testQuestionMarkExpression7() {
+        String original = "select id, name from foo where ? = id";
+        String expected = "select COUNT(*) from foo where ? = id";
+        test(original, expected);
+    }
+
+    @Test
+    public void testQuestionMarkExpression8() {
+        String original = "select id, name from foo where id = ? order by id desc";
+        String expected = "select COUNT(*) from foo where id = ? ";
+        test(original, expected);
+    }
+
+    @Test
+    public void testQuestionMarkExpression9() {
+        String original = "select id, name from foo where id = ? order by id desc";
+        String expected = "select COUNT(*) from foo where id = ? order by id desc";
+        test(original, expected, true);
     }
 
     private void test(String original, String expected) {

@@ -9,6 +9,7 @@ import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.context.ApplicationContext;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 /**
@@ -21,9 +22,15 @@ public class MyPagesApplication {
     public static void main(String[] args) {
         ApplicationContext applicationContext = SpringApplication.run(MyPagesApplication.class, args);
         UserMapper userMapper = applicationContext.getBean(UserMapper.class);
-        List<User> list = userMapper.query(1, 10);
-        Page<User> page = Page.of(list);
-        logger.info("{}", page);
+        int i = 0;
+        while (true) {
+            List<User> list = userMapper.query(++i, 10, 1, LocalDateTime.now());
+            Page<User> page = Page.of(list);
+            logger.info("{}", page);
+            if (!page.getNext()) {
+                break;
+            }
+        }
     }
 
 }

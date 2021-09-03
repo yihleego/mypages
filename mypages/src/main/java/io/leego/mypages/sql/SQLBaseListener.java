@@ -1,3 +1,4 @@
+// Generated from SQL.g4 by ANTLR 4.9.1
 package io.leego.mypages.sql;
 
 import org.antlr.v4.runtime.ParserRuleContext;
@@ -2758,6 +2759,18 @@ public class SQLBaseListener implements SQLListener {
 	 * <p>The default implementation does nothing.</p>
 	 */
 	@Override public void exitStringLiteral(SQLParser.StringLiteralContext ctx) { }
+	/**
+	 * {@inheritDoc}
+	 *
+	 * <p>The default implementation does nothing.</p>
+	 */
+	@Override public void enterQuestionMarkLiteral(SQLParser.QuestionMarkLiteralContext ctx) { }
+	/**
+	 * {@inheritDoc}
+	 *
+	 * <p>The default implementation does nothing.</p>
+	 */
+	@Override public void exitQuestionMarkLiteral(SQLParser.QuestionMarkLiteralContext ctx) { }
 	/**
 	 * {@inheritDoc}
 	 *
