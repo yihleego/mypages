@@ -25,7 +25,6 @@ public class PaginationDefinition {
     private Method rowsReadMethod;
     private Method countExprReadMethod;
     private Method countMethodNameReadMethod;
-    private String nestedMapKey;
     private final boolean valid;
 
     public PaginationDefinition(boolean valid) {
@@ -195,14 +194,6 @@ public class PaginationDefinition {
 
     public void setCountMethodNameReadMethod(Method countMethodNameReadMethod) {
         this.countMethodNameReadMethod = countMethodNameReadMethod;
-    }
-
-    public String getNestedMapKey() {
-        return nestedMapKey;
-    }
-
-    public void setNestedMapKey(String nestedMapKey) {
-        this.nestedMapKey = nestedMapKey;
     }
 
     public boolean isValid() {

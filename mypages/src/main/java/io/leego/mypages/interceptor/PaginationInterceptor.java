@@ -16,6 +16,7 @@ import io.leego.mypages.util.Pageable;
 import io.leego.mypages.util.PaginationCollectionFactory;
 import io.leego.mypages.util.PaginationDefinition;
 import io.leego.mypages.util.PaginationParameter;
+import org.apache.ibatis.binding.MapperMethod;
 import org.apache.ibatis.cache.CacheKey;
 import org.apache.ibatis.executor.Executor;
 import org.apache.ibatis.mapping.BoundSql;
@@ -91,13 +92,14 @@ public class PaginationInterceptor implements Interceptor {
     public Object intercept(Invocation invocation) throws Throwable {
         Object[] args = invocation.getArgs();
         Method method = invocation.getMethod();
-        MappedStatement ms = (MappedStatement) args[0];
-        Object parameter = args[1];
         Class<?> returnType = method.getReturnType();
-        if (!isPageable(parameter, returnType)) {
+        MappedStatement ms = (MappedStatement) args[0];
+        Object originalParameter = args[1];
+        Object realParameter = getRealParameter(ms, originalParameter);
+        if (!isPageable(realParameter, returnType)) {
             return invocation.proceed();
         }
-        PaginationParameter paginationParameter = analyseParameter(parameter, ms.getId());
+        PaginationParameter paginationParameter = analyseParameter(realParameter, ms.getId());
         if (paginationParameter == null) {
             return invocation.proceed();
         }
@@ -107,20 +109,20 @@ public class PaginationInterceptor implements Interceptor {
         BoundSql boundSql;
         CacheKey cacheKey;
         if (args.length == 4) {
-            boundSql = ms.getBoundSql(parameter);
-            cacheKey = executor.createCacheKey(ms, parameter, rowBounds, boundSql);
+            boundSql = ms.getBoundSql(originalParameter);
+            cacheKey = executor.createCacheKey(ms, originalParameter, rowBounds, boundSql);
         } else {
             boundSql = (BoundSql) args[5];
             cacheKey = (CacheKey) args[4];
         }
         Long total = null;
-        if (isCountable(parameter)) {
-            total = count(executor, ms, boundSql, parameter, resultHandler, paginationParameter.getCountExpr(), paginationParameter.getCountMethodName());
+        if (isCountable(realParameter)) {
+            total = count(executor, ms, boundSql, originalParameter, resultHandler, paginationParameter.getCountExpr(), paginationParameter.getCountMethodName());
             if (total == 0 && settings.isSkipQueryIfCountEqualsZero()) {
                 return PaginationCollectionFactory.build(returnType, total, paginationParameter.getPage(), paginationParameter.getSize());
             }
         }
-        List<?> result = query(executor, ms, boundSql, parameter, rowBounds, resultHandler, cacheKey, paginationParameter);
+        List<?> result = query(executor, ms, boundSql, originalParameter, rowBounds, resultHandler, cacheKey, paginationParameter);
         return PaginationCollectionFactory.build(returnType, result, total, paginationParameter.getPage(), paginationParameter.getSize());
     }
 
@@ -246,6 +248,29 @@ public class PaginationInterceptor implements Interceptor {
     }
 
     /**
+     * Returns the real parameter.
+     * @param ms        The origin {@link MappedStatement}
+     * @param parameter The parameter
+     */
+    private Object getRealParameter(MappedStatement ms, Object parameter) {
+        if (!(parameter instanceof MapperMethod.ParamMap)) {
+            return parameter;
+        }
+        Class<?> parameterType = ms.getParameterMap().getType();
+        if (MapperMethod.ParamMap.class.isAssignableFrom(parameterType) || parameterType.isPrimitive()) {
+            return parameter;
+        }
+        // Support for annotation '@Param' with a single object.
+        Map<?, ?> map = (Map<?, ?>) parameter;
+        for (Map.Entry<?, ?> entry : map.entrySet()) {
+            if (entry.getValue() != null && parameterType.isAssignableFrom(entry.getValue().getClass())) {
+                return entry.getValue();
+            }
+        }
+        return null;
+    }
+
+    /**
      * Returns <code>true</code> if pagination has been enabled.
      * @param parameter  The parameter
      * @param returnType Return type
@@ -286,12 +311,7 @@ public class PaginationInterceptor implements Interceptor {
         PaginationDefinition definition = definitionCacheMap.computeIfAbsent(
                 buildDefinitionParamKey(parameter, msId),
                 ignored -> buildPaginationDefinition(parameter));
-        if (!definition.isValid()) {
-            return null;
-        }
-        return isEmpty(definition.getNestedMapKey())
-                ? buildPaginationParameter(parameter, definition)
-                : buildPaginationParameter(((Map<?, ?>) parameter).get(definition.getNestedMapKey()), definition);
+        return definition.isValid() ? buildPaginationParameter(parameter, definition) : null;
     }
 
     /**
@@ -390,43 +410,12 @@ public class PaginationInterceptor implements Interceptor {
      * @return {@link PaginationDefinition}
      */
     private PaginationDefinition buildPaginationDefinition(Object parameter) {
-        if (parameter instanceof Map) {
-            // Support for annotation '@Param' with a single object.
-            Map<?, ?> parameterMap = (Map<?, ?>) parameter;
-            Map.Entry<?, ?> o = null;
-            if (parameterMap.size() == 1) {
-                Map.Entry<?, ?>[] entries = parameterMap.entrySet().toArray(new Map.Entry<?, ?>[0]);
-                if (entries[0].getValue() != null
-                        && !(entries[0].getValue() instanceof Number)
-                        && !(entries[0].getValue() instanceof CharSequence)) {
-                    o = entries[0];
-                }
-            } else if (parameterMap.size() == 2) {
-                Map.Entry<?, ?>[] entries = parameterMap.entrySet().toArray(new Map.Entry<?, ?>[0]);
-                if (entries[0].getValue() != null
-                        && entries[0].getValue() == entries[1].getValue()
-                        && !(entries[0].getValue() instanceof Number)
-                        && !(entries[0].getValue() instanceof CharSequence)) {
-                    o = entries[0];
-                }
-            }
-            if (o != null) {
-                PaginationDefinition definition = createPaginationDefinition(o.getValue());
-                if (definition.isValid()) {
-                    definition.setNestedMapKey(String.valueOf(o.getKey()));
-                }
-                return definition;
-            }
+        // Skip building if the parameter is an instance of a simple class.
+        if (parameter.getClass().isPrimitive()
+                || parameter instanceof Number
+                || parameter instanceof CharSequence) {
+            return PaginationDefinition.INVALID;
         }
-        return createPaginationDefinition(parameter);
-    }
-
-    /**
-     * Creates {@link PaginationDefinition} from parameter.
-     * @param parameter The parameter
-     * @return {@link PaginationDefinition}
-     */
-    private PaginationDefinition createPaginationDefinition(Object parameter) {
         Pagination pagination = parameter.getClass().getAnnotation(Pagination.class);
         // It might be an instance of 'Pageable' or 'Map'.
         if (parameter instanceof Pageable || parameter instanceof Map) {
@@ -445,9 +434,11 @@ public class PaginationInterceptor implements Interceptor {
         Method countExprReadMethod = null;
         Method countMethodNameReadMethod = null;
         // Obtain the fields and methods that should be used to read the property value.
-        List<Field> fields = getFields(parameter.getClass());
-        List<Method> methods = getMethods(parameter.getClass());
+        List<Field> fields = null;
+        List<Method> methods;
         if (pagination != null) {
+            fields = getFields(parameter.getClass());
+            methods = getMethods(parameter.getClass());
             for (Field field : fields) {
                 if (field.getAnnotation(Page.class) != null) {
                     pageField = field;
@@ -480,6 +471,9 @@ public class PaginationInterceptor implements Interceptor {
             }
         }
         if ((settings.getPageField() != null && settings.getSizeField() != null) || (settings.getOffsetField() != null && settings.getRowsField() != null)) {
+            if (fields == null) {
+                fields = getFields(parameter.getClass());
+            }
             for (Field field : fields) {
                 if (pageField == null && field.getName().equals(settings.getPageField())) {
                     pageField = field;
