@@ -257,7 +257,7 @@ public class PaginationInterceptor implements Interceptor {
             return parameter;
         }
         Class<?> parameterType = ms.getParameterMap().getType();
-        if (MapperMethod.ParamMap.class.isAssignableFrom(parameterType) || parameterType.isPrimitive()) {
+        if (parameterType == null || MapperMethod.ParamMap.class.isAssignableFrom(parameterType) || parameterType.isPrimitive()) {
             return parameter;
         }
         // Support for annotation '@Param' with a single object.

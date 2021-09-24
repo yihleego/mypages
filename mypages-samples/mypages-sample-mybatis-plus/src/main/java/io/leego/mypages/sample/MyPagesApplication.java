@@ -1,5 +1,6 @@
 package io.leego.mypages.sample;
 
+import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import io.leego.mypages.sample.entity.User;
 import io.leego.mypages.sample.mapper.UserMapper;
 import io.leego.mypages.util.Page;
@@ -31,6 +32,8 @@ public class MyPagesApplication {
                 break;
             }
         }
+        User user = userMapper.selectOne(new QueryWrapper<User>().eq("id", 1L));
+        logger.info("{}", user);
     }
 
 }
