@@ -20,14 +20,14 @@ $ mvn clean install
 <dependency>
     <groupId>io.leego</groupId>
     <artifactId>mypages</artifactId>
-    <version>2.2.0</version>
+    <version>2.2.1</version>
 </dependency>
 ```
 
 ### Gradle
 
 ```xml
-implementation 'io.leego:mypages:2.2.0'
+implementation 'io.leego:mypages:2.2.1'
 ```
 
 ## 支持数据库
