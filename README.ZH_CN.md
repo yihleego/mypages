@@ -83,4 +83,4 @@ select count(*) from t where k = v
 
 ## License
 
-MyPages is under the Apache 2.0 license. See the [LICENSE](LICENSE.txt) file for details.
+MyPages is under the MIT license. See the [LICENSE](LICENSE.txt) file for details.
